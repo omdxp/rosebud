@@ -1,0 +1,6 @@
+# just for mac users
+main.dSYM
+
+# build output
+*.o
+main
