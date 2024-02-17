@@ -4,3 +4,5 @@
     /*
     multile line comment
     */
+
+    'a' '\n' '\t'
