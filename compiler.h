@@ -14,7 +14,7 @@ struct pos
     const char *filename;
 };
 
-#define NUMERCI_CASE \
+#define NUMERIC_CASE \
     case '0':        \
     case '1':        \
     case '2':        \
