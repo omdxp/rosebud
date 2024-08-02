@@ -32,5 +32,5 @@ all: ${OBJECTS}
 	gcc ./helpers/vector.c ${INCLUDES} -o ./build/helpers/vector.o -g -c
 
 clean:
-	rm ./main
+	rm -rf ./main
 	rm -rf ${OBJECTS}
