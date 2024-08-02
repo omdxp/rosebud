@@ -1,39 +1,34 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // We want at least 20 vector element spaces in reserve before having
 // to reallocate memory again
 #define VECTOR_ELEMENT_INCREMENT 20
 
-enum
-{
-    VECTOR_FLAG_PEEK_DECREMENT = 0b00000001
-};
+enum { VECTOR_FLAG_PEEK_DECREMENT = 0b00000001 };
 
-struct vector
-{
-    void *data;
-    // The pointer index is the index that will be read next upon calling "vector_peek".
-    // This index will then be incremented
-    int pindex;
-    int rindex;
-    int mindex;
-    int count;
-    int flags;
-    size_t esize;
+struct vector {
+  void *data;
+  // The pointer index is the index that will be read next upon calling
+  // "vector_peek". This index will then be incremented
+  int pindex;
+  int rindex;
+  int mindex;
+  int count;
+  int flags;
+  size_t esize;
 
-    // Vector of struct vector, holds saves of this vector. YOu can save the internal state
-    // at all times with vector_save
-    // Data is not restored and is permenant, save does not respect data, only pointers
-    // and variables are saved. Useful to temporarily push the vector state
-    // and restore it later.
-    struct vector *saves;
+  // Vector of struct vector, holds saves of this vector. YOu can save the
+  // internal state at all times with vector_save Data is not restored and is
+  // permenant, save does not respect data, only pointers and variables are
+  // saved. Useful to temporarily push the vector state and restore it later.
+  struct vector *saves;
 };
 
 struct vector *vector_create(size_t esize);
@@ -91,7 +86,8 @@ int vector_fread(struct vector *vector, int amount, FILE *fp);
  */
 void *vector_data_ptr(struct vector *vector);
 
-int vector_insert(struct vector *vector_dst, struct vector *vector_src, int dst_index);
+int vector_insert(struct vector *vector_dst, struct vector *vector_src,
+                  int dst_index);
 
 /**
  * Pops the element at the given data address.
