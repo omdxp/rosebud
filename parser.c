@@ -52,6 +52,11 @@ static struct token *token_peek_next() {
   return vector_peek_no_increment(current_process->token_vec);
 }
 
+static bool token_next_is_operator(const char *op) {
+  struct token *token = token_peek_next();
+  return token_is_operator(token, op);
+}
+
 void parse_single_token_to_node() {
   struct token *token = token_next();
   struct node *node = NULL;
@@ -196,6 +201,240 @@ void parse_identifier(struct history *history) {
   parse_single_token_to_node();
 }
 
+static bool is_keyword_variable_modifier(const char *keyword) {
+  return S_EQ(keyword, "unsigned") || S_EQ(keyword, "signed") ||
+         S_EQ(keyword, "static") || S_EQ(keyword, "const") ||
+         S_EQ(keyword, "extern") || S_EQ(keyword, "__ignore_typecheck__");
+}
+
+void parse_datatype_modifiers(struct datatype *dtype) {
+  struct token *token = token_peek_next();
+  while (token && token->type == TOKEN_TYPE_KEYWORD) {
+    if (!is_keyword_variable_modifier(token->sval)) {
+      break;
+    }
+
+    if (S_EQ(token->sval, "unsigned")) {
+      dtype->flags &= ~DATATYPE_FLAG_IS_SIGNED;
+    } else if (S_EQ(token->sval, "signed")) {
+      dtype->flags |= DATATYPE_FLAG_IS_SIGNED;
+    } else if (S_EQ(token->sval, "static")) {
+      dtype->flags |= DATATYPE_FLAG_IS_STATIC;
+    } else if (S_EQ(token->sval, "const")) {
+      dtype->flags |= DATATYPE_FLAG_IS_CONST;
+    } else if (S_EQ(token->sval, "extern")) {
+      dtype->flags |= DATATYPE_FLAG_IS_EXTERN;
+    } else if (S_EQ(token->sval, "__ignore_typecheck__")) {
+      dtype->flags |= DATATYPE_FLAG_IGNORE_TYPECHECK;
+    }
+
+    token_next();
+    token = token_peek_next();
+  }
+}
+
+void parser_get_datatype_tokens(struct token **datatype_token,
+                                struct token **datatype_secondary_token) {
+  *datatype_token = token_next();
+  struct token *next_token = token_peek_next();
+  if (token_is_primitive_keyword(next_token)) {
+    *datatype_secondary_token = next_token;
+    token_next();
+  }
+}
+
+int paraser_datatype_expected_for_type_string(const char *str) {
+  int type = DATA_TYPE_EXPECT_PRIMITIVE;
+  if (S_EQ(str, "struct")) {
+    type = DATA_TYPE_EXPECT_STRUCT;
+  } else if (S_EQ(str, "union")) {
+    type = DATA_TYPE_EXPECT_UNION;
+  }
+
+  return type;
+}
+
+int parser_get_random_type_index() {
+  static int index = 0;
+  return index++;
+}
+
+struct token *parser_build_random_typename() {
+  char tmp_name[25];
+  sprintf(tmp_name, "random_typename_%d", parser_get_random_type_index());
+  char *sval = malloc(sizeof(tmp_name));
+  strncpy(sval, tmp_name, sizeof(tmp_name));
+  struct token *token = calloc(1, sizeof(struct token));
+  token->type = TOKEN_TYPE_IDENTIFIER;
+  token->sval = sval;
+  return token;
+}
+
+int parser_get_pointer_depth() {
+  int depth = 0;
+  while (token_next_is_operator("*")) {
+    depth++;
+    token_next();
+  }
+
+  return depth;
+}
+
+bool parser_datatype_is_secondary_allowed(int expected_type) {
+  return expected_type == DATA_TYPE_EXPECT_PRIMITIVE;
+}
+
+bool parser_datatype_is_secondary_allowed_for_type(const char *type) {
+  return S_EQ(type, "long") || S_EQ(type, "short") || S_EQ(type, "double") ||
+         S_EQ(type, "float");
+}
+
+void parser_datatype_init_type_and_size_for_primitive(
+    struct token *datatype_token, struct token *datatype_secondary_token,
+    struct datatype *datatype_out);
+
+void parser_datatype_adjust_size_for_secondary(
+    struct datatype *datatype, struct token *datatype_secondary_token) {
+  if (!datatype_secondary_token) {
+    return;
+  }
+
+  struct datatype *secondary_datatype = calloc(1, sizeof(struct datatype));
+  parser_datatype_init_type_and_size_for_primitive(datatype_secondary_token,
+                                                   NULL, secondary_datatype);
+  datatype->size += secondary_datatype->size;
+  datatype->secondary = secondary_datatype;
+  datatype->flags |= DATATYPE_FLAG_IS_SECONDARY;
+}
+
+void parser_datatype_init_type_and_size_for_primitive(
+    struct token *datatype_token, struct token *datatype_secondary_token,
+    struct datatype *datatype_out) {
+  if (!parser_datatype_is_secondary_allowed_for_type(datatype_token->sval) &&
+      datatype_secondary_token) {
+    compiler_error(current_process, "Not a valid secondary datatype: %s\n",
+                   datatype_token->sval);
+  }
+
+  if (S_EQ(datatype_token->sval, "void")) {
+    datatype_out->type = DATA_TYPE_VOID;
+    datatype_out->size = DATA_SIZE_ZERO;
+  } else if (S_EQ(datatype_token->sval, "char")) {
+    datatype_out->type = DATA_TYPE_CHAR;
+    datatype_out->size = DATA_SIZE_BYTE;
+  } else if (S_EQ(datatype_token->sval, "short")) {
+    datatype_out->type = DATA_TYPE_SHORT;
+    datatype_out->size = DATA_SIZE_WORD;
+  } else if (S_EQ(datatype_token->sval, "int")) {
+    datatype_out->type = DATA_TYPE_INT;
+    datatype_out->size = DATA_SIZE_DWORD;
+  } else if (S_EQ(datatype_token->sval, "long")) {
+    datatype_out->type = DATA_TYPE_LONG;
+    datatype_out->size = DATA_SIZE_DWORD; // this compiler is 32-bit
+  } else if (S_EQ(datatype_token->sval, "float")) {
+    datatype_out->type = DATA_TYPE_FLOAT;
+    datatype_out->size = DATA_SIZE_DWORD;
+  } else if (S_EQ(datatype_token->sval, "double")) {
+    datatype_out->type = DATA_TYPE_DOUBLE;
+    datatype_out->size = DATA_SIZE_DWORD;
+  } else {
+    compiler_error(current_process, "Invalid primitive datatype: %s\n",
+                   datatype_token->sval);
+  }
+
+  parser_datatype_adjust_size_for_secondary(datatype_out,
+                                            datatype_secondary_token);
+}
+
+void parser_datatype_init_type_and_size(struct token *datatype_token,
+                                        struct token *datatype_secondary_token,
+                                        struct datatype *datatype_out,
+                                        int pointer_depth, int expected_type) {
+  if (!parser_datatype_is_secondary_allowed(expected_type) &&
+      datatype_secondary_token) {
+    compiler_error(current_process, "Secondary datatype not allowed here");
+  }
+
+  switch (expected_type) {
+  case DATA_TYPE_EXPECT_PRIMITIVE:
+    parser_datatype_init_type_and_size_for_primitive(
+        datatype_token, datatype_secondary_token, datatype_out);
+    break;
+
+  case DATA_TYPE_EXPECT_STRUCT:
+  case DATA_TYPE_EXPECT_UNION:
+    compiler_error(current_process, "Struct and union not implemented yet");
+    break;
+
+  default:
+    compiler_error(current_process, "Invalid expected type: %d\n",
+                   expected_type);
+  }
+}
+
+void parser_datatype_init(struct token *datatype_token,
+                          struct token *datatype_secondary_token,
+                          struct datatype *datatype_out, int pointer_depth,
+                          int expected_type) {
+  parser_datatype_init_type_and_size(datatype_token, datatype_secondary_token,
+                                     datatype_out, pointer_depth,
+                                     expected_type);
+  datatype_out->type_str = datatype_token->sval;
+  if (S_EQ(datatype_token->sval, "long") && datatype_secondary_token &&
+      S_EQ(datatype_secondary_token->sval, "long")) {
+    compiler_warning(current_process,
+                     "Our compiler does support 64-bit longs therfore we are "
+                     "defaulting to 32-bit longs");
+    datatype_out->size = DATA_SIZE_DWORD;
+  }
+}
+
+void parse_datatype_type(struct datatype *dtype) {
+  struct token *datatype_token = NULL;
+  struct token *datatype_secondary_token = NULL;
+  parser_get_datatype_tokens(&datatype_token, &datatype_secondary_token);
+  int expected_type =
+      paraser_datatype_expected_for_type_string(datatype_token->sval);
+  if (datatype_is_struct_or_union_for_name(datatype_token->sval)) {
+    if (token_peek_next()->type == TOKEN_TYPE_IDENTIFIER) {
+      datatype_token = token_next();
+    } else {
+      // struct or union without a name
+      datatype_token = parser_build_random_typename();
+      dtype->flags |= DATATYPE_FLAG_STRUCT_UNION_NO_NAME;
+    }
+  }
+
+  // int**
+  int pointer_depth = parser_get_pointer_depth();
+  parser_datatype_init(datatype_token, datatype_secondary_token, dtype,
+                       pointer_depth, expected_type);
+}
+
+void parse_datatype(struct datatype *dtype) {
+  memset(dtype, 0, sizeof(struct datatype));
+  // In C all variables are signed by default
+  dtype->flags |= DATATYPE_FLAG_IS_SIGNED;
+
+  parse_datatype_modifiers(dtype);
+  parse_datatype_type(dtype);
+  parse_datatype_modifiers(dtype);
+}
+
+void parse_variable_function_or_struct_union(struct history *history) {
+  struct datatype dtype;
+  parse_datatype(&dtype);
+}
+
+void parse_keyword(struct history *history) {
+  struct token *token = token_peek_next();
+  if (is_keyword_variable_modifier(token->sval) ||
+      keyword_is_datatype(token->sval)) {
+    parse_variable_function_or_struct_union(history);
+    return;
+  }
+}
+
 int parse_expressionable_single(struct history *history) {
   struct token *token = token_peek_next();
   if (!token) {
@@ -217,6 +456,10 @@ int parse_expressionable_single(struct history *history) {
     parse_identifier(history);
     res = 0;
     break;
+  case TOKEN_TYPE_KEYWORD:
+    parse_keyword(history);
+    res = 0;
+    break;
   }
   return res;
 }
@@ -224,6 +467,11 @@ int parse_expressionable_single(struct history *history) {
 void parse_expressionable(struct history *history) {
   while (parse_expressionable_single(history) == 0) {
   }
+}
+
+void parse_keyword_for_global() {
+  parse_keyword(history_begin(0));
+  struct node *node = node_pop();
 }
 
 int parse_next() {
@@ -238,6 +486,10 @@ int parse_next() {
   case TOKEN_TYPE_IDENTIFIER:
   case TOKEN_TYPE_STRING:
     parse_expressionable(history_begin(0));
+    break;
+
+  case TOKEN_TYPE_KEYWORD:
+    parse_keyword_for_global();
     break;
   }
   return 0;

@@ -211,6 +211,14 @@ bool lex_is_in_expression() {
   return lex_process->current_expression_count > 0;
 }
 
+bool keyword_is_datatype(const char *keyword) {
+  return S_EQ(keyword, "void") || S_EQ(keyword, "char") ||
+         S_EQ(keyword, "short") || S_EQ(keyword, "int") ||
+         S_EQ(keyword, "long") || S_EQ(keyword, "float") ||
+         S_EQ(keyword, "double") || S_EQ(keyword, "struct") ||
+         S_EQ(keyword, "union");
+}
+
 bool is_keyword(const char *str) {
 
   return S_EQ(str, "unsigned") || S_EQ(str, "signed") || S_EQ(str, "char") ||
