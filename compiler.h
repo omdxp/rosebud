@@ -129,6 +129,19 @@ enum {
   COMPILER_FAILED_WITH_ERRORS,
 };
 
+struct scope {
+  int flags;
+
+  // void*
+  struct vector *entities;
+
+  // total number of bytes this scope occupies. Aligned to 16 bytes.
+  size_t size;
+
+  // null if this is the global scope
+  struct scope *parent;
+};
+
 struct compile_process {
   // The flags in regard on how this file should be compiled
   int flags;
@@ -145,6 +158,11 @@ struct compile_process {
   struct vector *node_vec;
   struct vector *node_tree_vec;
   FILE *ofile;
+
+  struct {
+    struct scope *root;
+    struct scope *current;
+  } scope;
 };
 
 enum { PARSE_ALL_OK, PARSE_GENERAL_ERROR };
