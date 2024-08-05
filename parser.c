@@ -28,6 +28,10 @@ struct history *history_down(struct history *history, int flags) {
 void parse_expressionable(struct history *history);
 int parse_expressionable_single(struct history *history);
 
+void parser_scope_new() { scope_new(current_process, 0); }
+
+void parser_scope_finish() { scope_finish(current_process); }
+
 static void parser_ignore_nl_or_comment(struct token *token) {
   while (token && token_is_nl_or_comment_or_newline_separator(token)) {
     // Skip the token
@@ -71,6 +75,11 @@ static struct token *token_peek_next() {
 static bool token_next_is_operator(const char *op) {
   struct token *token = token_peek_next();
   return token_is_operator(token, op);
+}
+
+static bool token_next_is_symbol(char c) {
+  struct token *token = token_peek_next();
+  return token_is_symbol(token, c);
 }
 
 void parse_single_token_to_node() {
@@ -546,9 +555,47 @@ void make_variable_list_node(struct vector *var_list) {
   });
 }
 
+void parse_struct_no_new_scope(struct datatype *dtype) {
+  expect_sym('{');
+  while (!token_is_symbol(token_peek_next(), '}')) {
+    parse_variable_function_or_struct_union(history_begin(0));
+  }
+
+  expect_sym('}');
+}
+
+void parse_struct(struct datatype *dtype) {
+  bool is_forward_declaration = !token_is_symbol(token_peek_next(), '{');
+  if (!is_forward_declaration) {
+    parser_scope_new();
+  }
+
+  parse_struct_no_new_scope(dtype);
+  if (!is_forward_declaration) {
+    // end the scope
+    parser_scope_finish();
+  }
+}
+
+void parse_struct_or_union(struct datatype *dtype) {
+  switch (dtype->type) {
+  case DATA_TYPE_STRUCT:
+    parse_struct(dtype);
+    break;
+  case DATA_TYPE_UNION:
+    break;
+  default:
+    compiler_error(current_process, "Invalid struct or union type");
+  }
+}
+
 void parse_variable_function_or_struct_union(struct history *history) {
   struct datatype dtype;
   parse_datatype(&dtype);
+
+  if (datatype_is_struct_or_union(&dtype) && token_next_is_symbol('{')) {
+    parse_struct_or_union(&dtype);
+  }
 
   // ignore int abbreviation if necessary (.e.g long int x becomes long x)
   parser_ignore_int(&dtype);
@@ -658,6 +705,7 @@ int parse_next() {
 }
 
 int parse(struct compile_process *process) {
+  scope_create_root(process);
   current_process = process;
   parser_last_token = NULL;
   node_set_vector(process->node_vec, process->node_tree_vec);
