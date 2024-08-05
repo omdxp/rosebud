@@ -23,8 +23,28 @@ struct vector *array_brackets_node_vector(struct array_brackets *brackets) {
 size_t array_brackets_calculate_size_from_index(struct datatype *dtype,
                                                 struct array_brackets *brackets,
                                                 int index) {
-#warning "TODO: Implement array_brackets_calculate_size_from_index"
-  return 0;
+  struct vector *array_vec = array_brackets_node_vector(brackets);
+  size_t size = dtype->size;
+  if (index >= vector_count(array_vec)) {
+    // char* abc
+    // return abc[0]; return abc[1];
+    return size;
+  }
+
+  vector_set_peek_pointer(array_vec, index);
+  struct node *array_bracket_node = vector_peek_ptr(array_vec);
+  if (!array_bracket_node) {
+    return 0;
+  }
+
+  while (array_bracket_node) {
+    assert(array_bracket_node->bracket.inner->type == NODE_TYPE_NUMBER);
+    int number = array_bracket_node->bracket.inner->llnum;
+    size *= number;
+    array_bracket_node = vector_peek_ptr(array_vec);
+  }
+
+  return size;
 }
 
 size_t array_brackets_calculate_size(struct datatype *dtype,
