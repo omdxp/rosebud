@@ -222,6 +222,41 @@ enum {
 
 enum { NODE_FLAG_INSIDE_EXPRESSION = 0b00000001 };
 
+struct array_brackets {
+  // vector of struct node*
+  struct vector *n_brackets;
+};
+
+struct node;
+struct datatype {
+  int flags;
+  // .i.e int, char, float, double, etc
+  int type;
+
+  // .e.g long int a; int is the secondary datatype
+  struct datatype *secondary;
+
+  // .i.e int, char, float, double, etc
+  const char *type_str;
+
+  // size of the datatype
+  size_t size;
+
+  // .e.g int **pointer = 0;
+  int pointer_depth;
+
+  union {
+    struct node *struct_node;
+    struct node *union_node;
+  };
+
+  struct array {
+    struct array_brackets *brackets;
+    // size of the array in bytes (DATATYPE_SIZE * array.size)
+    size_t size;
+  } array;
+};
+
 struct node {
   int type;
   int flags;
@@ -242,6 +277,23 @@ struct node {
       struct node *right;
       const char *op;
     } exp;
+
+    struct var {
+      struct datatype type;
+      const char *name;
+      struct node *val;
+    } var;
+
+    struct var_list {
+      // list of struct node* variables
+      struct vector *list;
+    } var_list;
+
+    struct bracket {
+      // int x[50]; [50] is bracket node and the inner node is NODE_TYPE_NUMBER
+      // with value 50
+      struct node *inner;
+    } bracket;
   };
 
   union {
@@ -278,29 +330,6 @@ enum {
   DATA_TYPE_STRUCT,
   DATA_TYPE_UNION,
   DATA_TYPE_UNKNOWN,
-};
-
-struct datatype {
-  int flags;
-  // .i.e int, char, float, double, etc
-  int type;
-
-  // .e.g long int a; int is the secondary datatype
-  struct datatype *secondary;
-
-  // .i.e int, char, float, double, etc
-  const char *type_str;
-
-  // size of the datatype
-  size_t size;
-
-  // .e.g int **pointer = 0;
-  int pointer_depth;
-
-  union {
-    struct node *struct_node;
-    struct node *union_node;
-  };
 };
 
 enum {
@@ -355,6 +384,7 @@ bool datatype_is_struct_or_union_for_name(const char *name);
 struct node *node_create(struct node *_node);
 void make_exp_node(struct node *left_node, struct node *right_node,
                    const char *op);
+void make_bracket_node(struct node *node);
 
 struct node *node_pop();
 struct node *node_peek();
@@ -363,6 +393,18 @@ void node_push(struct node *node);
 void node_set_vector(struct vector *vec, struct vector *root_vec);
 struct node *node_create(struct node *_node);
 struct node *node_peek_expressionable_or_null();
+
+struct array_brackets *array_brackets_new();
+void array_brackets_free(struct array_brackets *brackets);
+void array_brackets_add(struct array_brackets *brackets,
+                        struct node *bracket_node);
+struct vector *array_brackets_node_vector(struct array_brackets *brackets);
+size_t array_brackets_calculate_size_from_index(struct datatype *dtype,
+                                                struct array_brackets *brackets,
+                                                int index);
+size_t array_brackets_calculate_size(struct datatype *dtype,
+                                     struct array_brackets *brackets);
+int array_total_indexes(struct datatype *dtype);
 
 #define TOTAL_OPERATOR_GROUPS 14
 #define MAX_OPERATORS_IN_GROUP 12

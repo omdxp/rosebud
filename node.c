@@ -62,3 +62,7 @@ struct node *node_create(struct node *_node) {
   node_push(node);
   return node;
 }
+
+void make_bracket_node(struct node *node) {
+  node_create(&(struct node){.type = NODE_TYPE_BRACKET, .bracket.inner = node});
+}

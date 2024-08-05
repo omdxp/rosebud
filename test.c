@@ -1,1 +1,1 @@
-unsigned int
+int x[50][20];
