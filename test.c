@@ -1,1 +1,4 @@
-struct abc {};
+struct abc {
+  int a;
+  int b;
+};
