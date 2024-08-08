@@ -280,6 +280,7 @@ struct node {
 
     struct var {
       struct datatype type;
+      int padding;
       const char *name;
       struct node *val;
     } var;
@@ -454,6 +455,13 @@ struct scope *scope_current(struct compile_process *process);
 size_t variable_size(struct node *var_node);
 // get the sum of all the sizes of the variables in a variable list node
 size_t variable_size_for_list(struct node *var_list_node);
+// get the padding needed for a variable to align to 16 bytes
+int padding(int val, int to);
+// get the value aligned to 16 bytes
+int align_value(int val, int to);
+int align_value_treat_positive(int val, int to);
+// get the sum of all the paddings of the variables in a vector
+int compute_sum_padding(struct vector *vec);
 
 #define TOTAL_OPERATOR_GROUPS 14
 #define MAX_OPERATORS_IN_GROUP 12
