@@ -71,3 +71,17 @@ int compute_sum_padding(struct vector *vec) {
 
   return padding;
 }
+
+struct node *variable_struct_or_union_body_node(struct node *node) {
+  if (!node_is_struct_or_union_variable(node)) {
+    return NULL;
+  }
+
+  if (node->var.type.type == DATA_TYPE_STRUCT) {
+    return node->var.type.struct_node->_struct.body_n;
+  }
+
+#warning "Union not implemented"
+  printf("Union not implemented\n");
+  exit(1);
+}
