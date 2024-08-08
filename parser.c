@@ -28,6 +28,7 @@ struct history *history_down(struct history *history, int flags) {
 
 void parse_expressionable(struct history *history);
 int parse_expressionable_single(struct history *history);
+void parse_keyword(struct history *history);
 
 void parser_scope_new() { scope_new(current_process, 0); }
 
