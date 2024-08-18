@@ -1,1 +1,1 @@
-int main(int argc) { argc = x[12]; }
+int main(int argc) { char c = (char)argc; }

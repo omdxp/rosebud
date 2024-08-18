@@ -444,6 +444,12 @@ struct node {
       // label name
       struct node *name;
     } label;
+
+    struct cast {
+      // (type) exp
+      struct datatype type;
+      struct node *exp;
+    } cast;
   };
 
   union {
@@ -569,6 +575,7 @@ void make_label_node(struct node *name_node);
 void make_goto_node(struct node *label_node);
 void make_case_node(struct node *exp_node);
 void make_tenary_node(struct node *true_node, struct node *false_node);
+void make_cast_node(struct datatype *type, struct node *exp_node);
 
 struct node *node_pop();
 struct node *node_peek();
