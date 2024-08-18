@@ -6,6 +6,7 @@ static struct compile_process *current_process;
 static struct token *parser_last_token;
 
 extern struct node *parser_current_body;
+extern struct node *parser_current_function;
 extern struct expressionable_op_precedence_group
     op_precedence[TOTAL_OPERATOR_GROUPS];
 
@@ -45,6 +46,7 @@ enum {
   HISTORY_FLAG_IS_UPWARD_STACK = 0b00000010,
   HISTORY_FLAG_IS_GLOBAL_SCOPE = 0b000000100,
   HISTORY_FLAG_INSIDE_STRUCT = 0b00001000,
+  HISTORY_FLAG_INSIDE_FUNCTION_BODY = 0b00010000,
 };
 
 struct history {
@@ -64,6 +66,7 @@ struct history *history_down(struct history *history, int flags) {
   return new_history;
 }
 
+void parse_body(size_t *variable_size, struct history *history);
 void parse_expressionable(struct history *history);
 int parse_expressionable_single(struct history *history);
 void parse_keyword(struct history *history);
@@ -677,7 +680,46 @@ void make_variable_list_node(struct vector *var_list) {
       .var_list.list = var_list,
   });
 }
-void parse_body(size_t *variable_size, struct history *history);
+
+void parse_function_body(struct history *history) {
+  parse_body(NULL,
+             history_down(history,
+                          history->flags | HISTORY_FLAG_INSIDE_FUNCTION_BODY));
+}
+
+void parse_function(struct datatype *rtype, struct token *name_token,
+                    struct history *history) {
+  struct vector *args_vec = NULL;
+  parser_scope_new();
+  make_function_node(rtype, name_token->sval, args_vec, NULL);
+  struct node *function_node = node_peek();
+  parser_current_function = function_node;
+  if (datatype_is_struct_or_union(rtype)) {
+    function_node->func.args.stack_addition += DATA_SIZE_DWORD;
+  }
+
+  expect_op("(");
+#warning "TODO: parse function arguments"
+  expect_sym(')');
+
+  function_node->func.args.args = args_vec;
+  if (symresolver_get_symbol_for_native_function(current_process,
+                                                 name_token->sval)) {
+    function_node->func.flags |= FUNCTION_NODE_FLAG_IS_NATIVE;
+  }
+
+  if (token_next_is_symbol('{')) {
+    parse_function_body(history_begin(0));
+    struct node *body_node = node_pop();
+    function_node->func.body_n = body_node;
+  } else {
+    expect_sym(';');
+  }
+
+  parser_current_function = NULL;
+  parser_scope_finish();
+}
+
 void parse_symbol() {
   if (token_next_is_symbol('{')) {
     size_t variable_size = 0;
@@ -959,6 +1001,11 @@ void parse_variable_function_or_struct_union(struct history *history) {
 
   // check if this is a function
   // int x()
+  if (token_next_is_operator("(")) {
+    parse_function(&dtype, name_token, history);
+    return;
+  }
+
   parse_variable(&dtype, name_token, history);
   if (token_is_operator(token_peek_next(), ",")) {
     // int x, y;

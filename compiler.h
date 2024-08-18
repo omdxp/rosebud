@@ -452,6 +452,8 @@ void make_bracket_node(struct node *node);
 void make_body_node(struct vector *body_vec, size_t size, bool padded,
                     struct node *largest_var_node);
 void make_struct_node(const char *name, struct node *body_node);
+void make_function_node(struct datatype *rtype, const char *name,
+                        struct vector *args, struct node *body);
 
 struct node *node_pop();
 struct node *node_peek();
@@ -518,6 +520,9 @@ void symresolver_build_for_node(struct compile_process *process,
                                 struct node *node);
 struct symbol *symresolver_get_symbol(struct compile_process *process,
                                       const char *name);
+struct symbol *
+symresolver_get_symbol_for_native_function(struct compile_process *process,
+                                           const char *name);
 
 #define TOTAL_OPERATOR_GROUPS 14
 #define MAX_OPERATORS_IN_GROUP 12
