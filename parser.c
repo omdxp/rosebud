@@ -160,7 +160,7 @@ void parse_expressionable_for_op(struct history *history, const char *op) {
 }
 
 static int parser_get_precedence_for_operator(
-    const char *op, struct expressionable_op_precendence_group **group_out) {
+    const char *op, struct expressionable_op_precedence_group **group_out) {
   *group_out = NULL;
   for (int i = 0; i < TOTAL_OPERATOR_GROUPS; i++) {
     for (int b = 0; op_precedence[i].operators[b]; b++) {
@@ -240,7 +240,7 @@ void parser_reorder_expression(struct node **node_out) {
 
 void parse_exp_normal(struct history *history) {
   struct token *op_token = token_peek_next();
-  char *op = op_token->sval;
+  const char *op = op_token->sval;
   struct node *node_left = node_peek_expressionable_or_null();
   if (!node_left) {
     return;
