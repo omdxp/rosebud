@@ -76,6 +76,11 @@ void make_else_node(struct node *body_node) {
                              .stmt.else_stmt.body_node = body_node});
 }
 
+void make_return_node(struct node *exp_node) {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_RETURN,
+                             .stmt.return_stmt.exp = exp_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));

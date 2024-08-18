@@ -6,4 +6,6 @@ int main(int argc) {
   } else {
     int z = 40;
   }
+
+  return;
 }

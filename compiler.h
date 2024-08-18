@@ -353,6 +353,11 @@ struct node {
     } func;
 
     struct statement {
+      struct return_stmt {
+        // return expression
+        struct node *exp;
+      } return_stmt;
+
       struct if_stmt {
         // if (cond) { body }
         struct node *cond_node;
@@ -481,6 +486,7 @@ void make_function_node(struct datatype *rtype, const char *name,
 void make_if_node(struct node *cond_node, struct node *body_node,
                   struct node *next_node);
 void make_else_node(struct node *body_node);
+void make_return_node(struct node *exp_node);
 
 struct node *node_pop();
 struct node *node_peek();
