@@ -102,6 +102,16 @@ void make_do_while_node(struct node *cond_node, struct node *body_node) {
                              .stmt.do_while_stmt.body = body_node});
 }
 
+void make_switch_node(struct node *exp_node, struct node *body_node,
+                      struct vector *cases, bool has_default_case) {
+  node_create(
+      &(struct node){.type = NODE_TYPE_STATEMENT_SWITCH,
+                     .stmt.switch_stmt.exp = exp_node,
+                     .stmt.switch_stmt.body = body_node,
+                     .stmt.switch_stmt.cases = cases,
+                     .stmt.switch_stmt.has_default_case = has_default_case});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));
