@@ -124,6 +124,11 @@ void make_label_node(struct node *name_node) {
   node_create(&(struct node){.type = NODE_TYPE_LABEL, .label.name = name_node});
 }
 
+void make_goto_node(struct node *label_node) {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_GOTO,
+                             .stmt._goto.label = label_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));

@@ -1221,6 +1221,15 @@ void parse_keyword_parentheses_expression(const char *keyword) {
   expect_sym(')');
 }
 
+void parse_goto(struct history *history) {
+  expect_keyword("goto");
+  parse_identifier(history_begin(0));
+  expect_sym(';');
+
+  struct node *label_node = node_pop();
+  make_goto_node(label_node);
+}
+
 void parse_label(struct history *history) {
   expect_sym(':');
   struct node *label_name_node = node_pop();
@@ -1352,8 +1361,10 @@ void parse_keyword(struct history *history) {
 
   if (S_EQ(token->sval, "break")) {
     parse_break(history);
+    return;
   } else if (S_EQ(token->sval, "continue")) {
     parse_continue(history);
+    return;
   } else if (S_EQ(token->sval, "return")) {
     parse_return(history);
     return;
@@ -1362,13 +1373,22 @@ void parse_keyword(struct history *history) {
     return;
   } else if (S_EQ(token->sval, "for")) {
     parse_for_stmt(history);
+    return;
   } else if (S_EQ(token->sval, "while")) {
     parse_while(history);
+    return;
   } else if (S_EQ(token->sval, "do")) {
     parse_do_while(history);
+    return;
   } else if (S_EQ(token->sval, "switch")) {
     parse_switch(history);
+    return;
+  } else if (S_EQ(token->sval, "goto")) {
+    parse_goto(history);
+    return;
   }
+
+  compiler_error(current_process, "Invalid keyword: %s", token->sval);
 }
 
 int parse_expressionable_single(struct history *history) {

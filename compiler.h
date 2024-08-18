@@ -422,6 +422,11 @@ struct node {
         // has default case
         bool has_default_case;
       } switch_stmt;
+
+      struct _goto_stmt {
+        // goto label;
+        struct node *label;
+      } _goto;
     } stmt;
 
     struct node_label {
@@ -550,6 +555,7 @@ void make_switch_node(struct node *exp_node, struct node *body_node,
 void make_continue_node();
 void make_break_node();
 void make_label_node(struct node *name_node);
+void make_goto_node(struct node *label_node);
 
 struct node *node_pop();
 struct node *node_peek();
