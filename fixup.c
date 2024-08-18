@@ -2,34 +2,6 @@
 #include "helpers/vector.h"
 #include <stdlib.h>
 
-struct fixup;
-
-// return true if the fixup is done
-typedef bool (*FIXUP_FIX)(struct fixup *fixup);
-
-// signify the end of the fixup and free any resources
-typedef void (*FIXUP_END)(struct fixup *fixup);
-
-struct fixup_config {
-  FIXUP_FIX fix;
-  FIXUP_END end;
-  void *private;
-};
-
-struct fixup_system {
-  struct vector *fixups;
-};
-
-enum {
-  FIXUP_FLAG_RESOLVED = 0b00000001,
-};
-
-struct fixup {
-  int flags;
-  struct fixup_system *system;
-  struct fixup_config config;
-};
-
 struct fixup_system *fixup_sys_new() {
   struct fixup_system *system = calloc(1, sizeof(struct fixup_system));
   system->fixups = vector_create(sizeof(struct fixup));

@@ -3,6 +3,7 @@
 #include <assert.h>
 
 static struct compile_process *current_process;
+static struct fixup_system *parser_fixup_sys;
 static struct token *parser_last_token;
 
 extern struct node *parser_current_body;
@@ -687,6 +688,28 @@ void parse_expressionable_root(struct history *history) {
   node_push(result_node);
 }
 
+struct datatype_struct_node_fix_private {
+  // node to fix
+  struct node *node;
+};
+
+bool datatype_struct_node_fix(struct fixup *fixup) {
+  struct datatype_struct_node_fix_private *private = fixup_private(fixup);
+  struct datatype *dtype = &private->node->var.type;
+  dtype->type = DATA_TYPE_STRUCT;
+  dtype->size = size_of_struct(dtype->type_str);
+  dtype->struct_node = struct_node_for_name(current_process, dtype->type_str);
+  if (!dtype->struct_node) {
+    return false;
+  }
+
+  return true;
+}
+
+void datatype_struct_node_end(struct fixup *fixup) {
+  free(fixup_private(fixup));
+}
+
 void make_variable_node(struct datatype *dtype, struct token *name_token,
                         struct node *value_node) {
   const char *name_str = NULL;
@@ -700,6 +723,18 @@ void make_variable_node(struct datatype *dtype, struct token *name_token,
       .var.val = value_node,
       .var.type = *dtype,
   });
+
+  struct node *var_node = node_peek_or_null();
+  if (var_node->var.type.type == DATA_TYPE_STRUCT &&
+      !var_node->var.type.struct_node) {
+    struct datatype_struct_node_fix_private *private =
+        calloc(1, sizeof(struct datatype_struct_node_fix_private));
+    private->node = var_node;
+    fixup_register(parser_fixup_sys,
+                   &(struct fixup_config){.fix = datatype_struct_node_fix,
+                                          .end = datatype_struct_node_end,
+                                          .private = private});
+  }
 }
 
 void parser_scope_offset_for_stack(struct node *node, struct history *history) {
@@ -1552,6 +1587,7 @@ int parse(struct compile_process *process) {
   parser_last_token = NULL;
   node_set_vector(process->node_vec, process->node_tree_vec);
   parser_blank_node = node_create(&(struct node){.type = NODE_TYPE_BLANK});
+  parser_fixup_sys = fixup_sys_new();
   struct node *node = NULL;
   vector_set_peek_pointer(process->token_vec, 0);
   while (parse_next() == 0) {
@@ -1559,5 +1595,6 @@ int parse(struct compile_process *process) {
     vector_push(process->node_tree_vec, &node);
   }
 
+  assert(fixups_resolve(parser_fixup_sys));
   return PARSE_ALL_OK;
 }
