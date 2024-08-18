@@ -1,11 +1,5 @@
 int main(int argc) {
-  if (1) {
-    int x = 20;
-  } else if (2) {
-    int y = 30;
-  } else {
-    int z = 40;
+  int i = 0;
+  for (i = 0; i < 10; i += 1) {
   }
-
-  return;
 }

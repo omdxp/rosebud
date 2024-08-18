@@ -373,6 +373,20 @@ struct node {
         // else { body }
         struct node *body_node;
       } else_stmt;
+
+      struct for_stmt {
+        // for (init; cond; inc) { body }
+        struct node *init;
+
+        // condition
+        struct node *cond;
+
+        // increment
+        struct node *inc;
+
+        // body of the for statement
+        struct node *body;
+      } for_stmt;
     } stmt;
   };
 
@@ -487,6 +501,8 @@ void make_if_node(struct node *cond_node, struct node *body_node,
                   struct node *next_node);
 void make_else_node(struct node *body_node);
 void make_return_node(struct node *exp_node);
+void make_for_node(struct node *init_node, struct node *cond_node,
+                   struct node *inc_node, struct node *body_node);
 
 struct node *node_pop();
 struct node *node_peek();

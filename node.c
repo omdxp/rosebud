@@ -81,6 +81,15 @@ void make_return_node(struct node *exp_node) {
                              .stmt.return_stmt.exp = exp_node});
 }
 
+void make_for_node(struct node *init_node, struct node *cond_node,
+                   struct node *inc_node, struct node *body_node) {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_FOR,
+                             .stmt.for_stmt.init = init_node,
+                             .stmt.for_stmt.cond = cond_node,
+                             .stmt.for_stmt.inc = inc_node,
+                             .stmt.for_stmt.body = body_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));
