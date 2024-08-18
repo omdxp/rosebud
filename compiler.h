@@ -427,6 +427,7 @@ struct node *node_create(struct node *_node);
 struct node *node_peek_expressionable_or_null();
 struct node *variable_struct_or_union_body_node(struct node *node);
 struct node *variable_node(struct node *node);
+struct node *variable_node_or_list(struct node *node);
 bool variable_node_is_primitive(struct node *node);
 
 bool node_is_struct_or_union_variable(struct node *node);
