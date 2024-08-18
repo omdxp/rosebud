@@ -941,7 +941,7 @@ void parse_variable_function_or_struct_union(struct history *history) {
   if (datatype_is_struct_or_union(&dtype) && token_next_is_symbol('{')) {
     parse_struct_or_union(&dtype);
     struct node *su_node = node_pop();
-    symresolver_build_for_node(scope_current, su_node);
+    symresolver_build_for_node(current_process, su_node);
     node_push(su_node);
     return;
   }
