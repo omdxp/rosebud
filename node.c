@@ -78,6 +78,50 @@ void make_body_node(struct vector *body_vec, size_t size, bool padded,
                              .body.largest_variable_node = largest_var_node});
 }
 
+void make_struct_node(const char *name, struct node *body_node) {
+  int flags = 0;
+  if (!body_node) {
+    flags |= NODE_FLAG_IS_FORWARD_DECLARATION;
+  }
+
+  node_create(&(struct node){.type = NODE_TYPE_STRUCT,
+                             ._struct.body_n = body_node,
+                             ._struct.name = name,
+                             .flags = flags});
+}
+
+struct node *node_from_sym(struct symbol *sym) {
+  if (sym->type != SYMBOL_TYPE_NODE) {
+    return NULL;
+  }
+
+  return sym->data;
+}
+
+struct node *node_from_symbol(struct compile_process *process,
+                              const char *name) {
+  struct symbol *sym = symresolver_get_symbol(process, name);
+  if (!sym) {
+    return NULL;
+  }
+
+  return node_from_sym(sym);
+}
+
+struct node *struct_node_for_name(struct compile_process *process,
+                                  const char *name) {
+  struct node *node = node_from_symbol(process, name);
+  if (!node) {
+    return NULL;
+  }
+
+  if (node->type != NODE_TYPE_STRUCT) {
+    return NULL;
+  }
+
+  return node;
+}
+
 bool node_is_struct_or_union_variable(struct node *node) {
   if (node->type != NODE_TYPE_VARIABLE) {
     return false;
