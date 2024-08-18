@@ -1215,6 +1215,18 @@ void parse_keyword_parentheses_expression(const char *keyword) {
   expect_sym(')');
 }
 
+void parse_break(struct history *history) {
+  expect_keyword("break");
+  expect_sym(';');
+  make_break_node();
+}
+
+void parse_continue(struct history *history) {
+  expect_keyword("continue");
+  expect_sym(';');
+  make_continue_node();
+}
+
 void parse_switch(struct history *history) {
   struct parser_history_switch _switch = parser_new_switch_statement(history);
   parse_keyword_parentheses_expression("switch");
@@ -1322,7 +1334,11 @@ void parse_keyword(struct history *history) {
     return;
   }
 
-  if (S_EQ(token->sval, "return")) {
+  if (S_EQ(token->sval, "break")) {
+    parse_break(history);
+  } else if (S_EQ(token->sval, "continue")) {
+    parse_continue(history);
+  } else if (S_EQ(token->sval, "return")) {
     parse_return(history);
     return;
   } else if (S_EQ(token->sval, "if")) {

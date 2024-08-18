@@ -112,6 +112,14 @@ void make_switch_node(struct node *exp_node, struct node *body_node,
                      .stmt.switch_stmt.has_default_case = has_default_case});
 }
 
+void make_continue_node() {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_CONTINUE});
+}
+
+void make_break_node() {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_BREAK});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));

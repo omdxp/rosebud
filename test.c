@@ -1,3 +1,6 @@
 int main(int argc) {
-  switch (argc) {}
+  while (argc > 0) {
+    break;
+    continue;
+  }
 }
