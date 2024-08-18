@@ -1,1 +1,1 @@
-int main(int argc) { x = 5, 20; }
+int main(int argc) { argc = x[12]; }
