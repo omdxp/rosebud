@@ -35,7 +35,17 @@ parser_new_scope_entity(struct node *node, int stack_offset, int flags) {
   return entity;
 }
 
-enum { HISTORY_FLAG_INSIDE_UNION = 0b00000001 };
+struct parser_scope_entity *parser_scope_last_entity_stop_global_scope() {
+  return scope_last_entity_from_scope_stop_at(current_process,
+                                              current_process->scope.root);
+}
+
+enum {
+  HISTORY_FLAG_INSIDE_UNION = 0b00000001,
+  HISTORY_FLAG_IS_UPWARD_STACK = 0b00000010,
+  HISTORY_FLAG_IS_GLOBAL_SCOPE = 0b000000100,
+  HISTORY_FLAG_INSIDE_STRUCT = 0b00001000,
+};
 
 struct history {
   int flags;
@@ -61,6 +71,10 @@ void parse_keyword(struct history *history);
 void parser_scope_new() { scope_new(current_process, 0); }
 
 void parser_scope_finish() { scope_finish(current_process); }
+
+struct parser_scope_entity *parser_scope_last_entity() {
+  return scope_last_entity(current_process);
+}
 
 void parser_scope_push(struct node *node, size_t size) {
   scope_push(current_process, node, size);
@@ -522,6 +536,58 @@ void make_variable_node(struct datatype *dtype, struct token *name_token,
   });
 }
 
+void parser_scope_offset_for_stack(struct node *node, struct history *history) {
+  struct parser_scope_entity *last_entity =
+      parser_scope_last_entity_stop_global_scope();
+  bool upward_stack = history->flags & HISTORY_FLAG_IS_UPWARD_STACK;
+  int offset = -variable_size(node);
+  if (upward_stack) {
+#warning "TODO: handle upward stack"
+    compiler_error(current_process, "Upward stack not implemented yet");
+  }
+
+  if (last_entity) {
+    offset += variable_node(last_entity->node)->var.aoffset;
+    if (variable_node_is_primitive(node)) {
+      variable_node(node)->var.padding =
+          padding(upward_stack ? offset : -offset, node->var.type.size);
+    }
+  }
+}
+
+void parser_scope_offset_for_global(struct node *node,
+                                    struct history *history) {
+  return;
+}
+
+void parser_scope_offset_for_struct(struct node *node,
+                                    struct history *history) {
+  int offset = 0;
+  struct parser_scope_entity *last_entity = parser_scope_last_entity();
+  if (last_entity) {
+    offset += last_entity->stack_offset + last_entity->node->var.type.size;
+    if (variable_node_is_primitive(node)) {
+      node->var.padding = padding(offset, node->var.type.size);
+    }
+
+    node->var.aoffset = offset + node->var.padding;
+  }
+}
+
+void parser_scope_offset(struct node *node, struct history *history) {
+  if (history->flags & HISTORY_FLAG_IS_GLOBAL_SCOPE) {
+    parser_scope_offset_for_global(node, history);
+    return;
+  }
+
+  if (history->flags & HISTORY_FLAG_INSIDE_STRUCT) {
+    parser_scope_offset_for_struct(node, history);
+    return;
+  }
+
+  parser_scope_offset_for_stack(node, history);
+}
+
 void make_variable_node_and_register(struct history *history,
                                      struct datatype *dtype,
                                      struct token *name_token,
@@ -530,9 +596,10 @@ void make_variable_node_and_register(struct history *history,
   struct node *var_node = node_pop();
 
   // calculate scope offset
+  parser_scope_offset(var_node, history);
+
   // push the variable node to the current scope
 #warning "TODO: calculate scope offset and push to scope"
-
   node_push(var_node);
 }
 

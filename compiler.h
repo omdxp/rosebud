@@ -281,6 +281,7 @@ struct node {
     struct var {
       struct datatype type;
       int padding;
+      int aoffset; // aligned offset
       const char *name;
       struct node *val;
     } var;
@@ -403,6 +404,7 @@ bool token_is_operator(struct token *token, const char *value);
 
 bool datatype_is_struct_or_union_for_name(const char *name);
 bool datatype_is_struct_or_union(struct datatype *dtype);
+bool datatype_is_primitive(struct datatype *dtype);
 
 size_t datatype_size_for_array_access(struct datatype *dtype);
 size_t datatype_element_size(struct datatype *dtype);
@@ -424,6 +426,8 @@ void node_set_vector(struct vector *vec, struct vector *root_vec);
 struct node *node_create(struct node *_node);
 struct node *node_peek_expressionable_or_null();
 struct node *variable_struct_or_union_body_node(struct node *node);
+struct node *variable_node(struct node *node);
+bool variable_node_is_primitive(struct node *node);
 
 bool node_is_struct_or_union_variable(struct node *node);
 
