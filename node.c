@@ -96,6 +96,12 @@ void make_while_node(struct node *cond_node, struct node *body_node) {
                              .stmt.while_stmt.body = body_node});
 }
 
+void make_do_while_node(struct node *cond_node, struct node *body_node) {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_DO_WHILE,
+                             .stmt.do_while_stmt.cond = cond_node,
+                             .stmt.do_while_stmt.body = body_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));

@@ -1182,6 +1182,17 @@ void parse_keyword_parentheses_expression(const char *keyword) {
   expect_sym(')');
 }
 
+void parse_do_while(struct history *history) {
+  expect_keyword("do");
+  size_t variable_size = 0;
+  parse_body(&variable_size, history);
+  struct node *body_node = node_pop();
+  parse_keyword_parentheses_expression("while");
+  struct node *cond_node = node_pop();
+  expect_sym(';');
+  make_do_while_node(cond_node, body_node);
+}
+
 void parse_while(struct history *history) {
   parse_keyword_parentheses_expression("while");
   struct node *cond_node = node_pop();
@@ -1277,6 +1288,9 @@ void parse_keyword(struct history *history) {
     return;
   } else if (S_EQ(token->sval, "while")) {
     parse_while(history);
+    return;
+  } else if (S_EQ(token->sval, "do")) {
+    parse_do_while(history);
     return;
   }
 }
