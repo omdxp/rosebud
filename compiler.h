@@ -481,6 +481,9 @@ int align_value_treat_positive(int val, int to);
 // get the sum of all the paddings of the variables in a vector
 int compute_sum_padding(struct vector *vec);
 
+void symresolver_init(struct compile_process *process);
+void symresolver_new_table(struct compile_process *process);
+void symresolver_end_table(struct compile_process *process);
 void symresolver_build_for_node(struct compile_process *process,
                                 struct node *node);
 struct symbol *symresolver_get_symbol(struct compile_process *process,
