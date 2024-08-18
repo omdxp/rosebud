@@ -363,6 +363,11 @@ struct node {
         // else if statement
         struct node *next;
       } if_stmt;
+
+      struct else_stmt {
+        // else { body }
+        struct node *body_node;
+      } else_stmt;
     } stmt;
   };
 
@@ -475,6 +480,7 @@ void make_function_node(struct datatype *rtype, const char *name,
                         struct vector *args, struct node *body);
 void make_if_node(struct node *cond_node, struct node *body_node,
                   struct node *next_node);
+void make_else_node(struct node *body_node);
 
 struct node *node_pop();
 struct node *node_peek();
