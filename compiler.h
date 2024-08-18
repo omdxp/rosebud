@@ -471,8 +471,9 @@ struct node *variable_struct_or_union_body_node(struct node *node);
 struct node *variable_node(struct node *node);
 struct node *variable_node_or_list(struct node *node);
 bool variable_node_is_primitive(struct node *node);
-
 bool node_is_struct_or_union_variable(struct node *node);
+
+size_t function_node_argument_stack_addition(struct node *node);
 
 struct array_brackets *array_brackets_new();
 void array_brackets_free(struct array_brackets *brackets);

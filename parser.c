@@ -565,8 +565,12 @@ void parser_scope_offset_for_stack(struct node *node, struct history *history) {
   bool upward_stack = history->flags & HISTORY_FLAG_IS_UPWARD_STACK;
   int offset = -variable_size(node);
   if (upward_stack) {
-#warning "TODO: handle upward stack"
-    compiler_error(current_process, "Upward stack not implemented yet");
+    size_t stack_addition =
+        function_node_argument_stack_addition(parser_current_function);
+    offset = stack_addition;
+    if (last_entity) {
+      offset = datatype_size(&variable_node(last_entity->node)->var.type);
+    }
   }
 
   if (last_entity) {
@@ -687,6 +691,51 @@ void parse_function_body(struct history *history) {
                           history->flags | HISTORY_FLAG_INSIDE_FUNCTION_BODY));
 }
 
+void token_read_dots(size_t amount) {
+  for (size_t i = 0; i < amount; i++) {
+    expect_op(".");
+  }
+}
+
+void parse_variable_full(struct history *history) {
+  struct datatype dtype;
+  parse_datatype(&dtype);
+
+  struct token *name_token = NULL;
+  if (token_peek_next()->type == TOKEN_TYPE_IDENTIFIER) {
+    name_token = token_next();
+  }
+
+  parse_variable(&dtype, name_token, history);
+}
+
+struct vector *parse_function_arguments(struct history *history) {
+  parser_scope_new();
+  struct vector *args_vec = vector_create(sizeof(struct node *));
+  while (!token_next_is_symbol(')')) {
+    if (token_next_is_operator(".")) {
+      token_read_dots(3); // varargs ...
+      parser_scope_finish();
+      return args_vec;
+    }
+
+    parse_variable_full(
+        history_down(history, history->flags | HISTORY_FLAG_IS_UPWARD_STACK));
+    struct node *arg_node = node_pop();
+    vector_push(args_vec, &arg_node);
+
+    if (!token_next_is_symbol(',')) {
+      break;
+    }
+
+    // pop off the comma
+    token_next();
+  }
+
+  parser_scope_finish();
+  return args_vec;
+}
+
 void parse_function(struct datatype *rtype, struct token *name_token,
                     struct history *history) {
   struct vector *args_vec = NULL;
@@ -699,7 +748,7 @@ void parse_function(struct datatype *rtype, struct token *name_token,
   }
 
   expect_op("(");
-#warning "TODO: parse function arguments"
+  args_vec = parse_function_arguments(history_begin(0));
   expect_sym(')');
 
   function_node->func.args.args = args_vec;
