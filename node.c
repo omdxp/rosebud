@@ -134,6 +134,12 @@ void make_case_node(struct node *exp_node) {
                              .stmt._case.exp = exp_node});
 }
 
+void make_tenary_node(struct node *true_node, struct node *false_node) {
+  node_create(&(struct node){.type = NODE_TYPE_TENARY,
+                             .tenary.true_node = true_node,
+                             .tenary.false_node = false_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));

@@ -1,6 +1,1 @@
-int main(int argc) {
-  switch (argc) {
-  case 1:
-    return 1;
-  }
-}
+int main(int argc) { int res = argc > 1 ? 1 : 0; }
