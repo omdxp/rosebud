@@ -107,6 +107,7 @@ void parse_expressionable(struct history *history);
 int parse_expressionable_single(struct history *history);
 void parse_keyword(struct history *history);
 void parse_expressionable_root(struct history *history);
+void parse_label(struct history *history);
 
 void parser_scope_new() { scope_new(current_process, 0); }
 
@@ -865,7 +866,12 @@ void parse_symbol() {
     parse_body(&variable_size, history);
     struct node *body_node = node_pop();
     node_push(body_node);
+  } else if (token_next_is_symbol(':')) {
+    parse_label(history_begin(0));
+    return;
   }
+
+  compiler_error(current_process, "Invalid symbol");
 }
 
 void parse_statement(struct history *history) {
@@ -1213,6 +1219,16 @@ void parse_keyword_parentheses_expression(const char *keyword) {
   expect_op("(");
   parse_expressionable_root(history_begin(0));
   expect_sym(')');
+}
+
+void parse_label(struct history *history) {
+  expect_sym(':');
+  struct node *label_name_node = node_pop();
+  if (label_name_node->type != NODE_TYPE_IDENTIFIER) {
+    compiler_error(current_process, "Expected an identifier");
+  }
+
+  make_label_node(label_name_node);
 }
 
 void parse_break(struct history *history) {
