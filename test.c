@@ -1,7 +1,6 @@
 int main(int argc) {
-  goto label;
-  return 0;
-
-label:
-  return 1;
+  switch (argc) {
+  case 1:
+    return 1;
+  }
 }
