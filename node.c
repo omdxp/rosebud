@@ -63,6 +63,14 @@ void make_exp_parentheses_node(struct node *exp_node) {
                              .paren = exp_node});
 }
 
+void make_if_node(struct node *cond_node, struct node *body_node,
+                  struct node *next_node) {
+  node_create(&(struct node){.type = NODE_TYPE_STATEMENT_IF,
+                             .stmt.if_stmt.cond_node = cond_node,
+                             .stmt.if_stmt.body_node = body_node,
+                             .stmt.if_stmt.next = next_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));

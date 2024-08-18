@@ -1,1 +1,5 @@
-int main(int argc) { argc = (argc + 1) * 2; }
+int main(int argc) {
+  if (1) {
+    int x = 20;
+  }
+}

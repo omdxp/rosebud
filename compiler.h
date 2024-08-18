@@ -351,6 +351,19 @@ struct node {
       // stack size for all the variables in the function
       size_t stack_size;
     } func;
+
+    struct statement {
+      struct if_stmt {
+        // if (cond) { body }
+        struct node *cond_node;
+
+        // body of the if statement
+        struct node *body_node;
+
+        // else if statement
+        struct node *next;
+      } if_stmt;
+    } stmt;
   };
 
   union {
@@ -460,6 +473,8 @@ void make_body_node(struct vector *body_vec, size_t size, bool padded,
 void make_struct_node(const char *name, struct node *body_node);
 void make_function_node(struct datatype *rtype, const char *name,
                         struct vector *args, struct node *body);
+void make_if_node(struct node *cond_node, struct node *body_node,
+                  struct node *next_node);
 
 struct node *node_pop();
 struct node *node_peek();
