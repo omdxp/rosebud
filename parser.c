@@ -356,11 +356,22 @@ void parse_for_parentheses(struct history *history) {
   parser_deal_with_additional_expression();
 }
 
+void parse_for_comma(struct history *history) {
+  // skip comma
+  token_next();
+  struct node *left_node = node_pop();
+  parse_expressionable_root(history);
+  struct node *right_node = node_pop();
+  make_exp_node(left_node, right_node, ",");
+}
+
 int parse_exp(struct history *history) {
   if (S_EQ(token_peek_next()->sval, "(")) {
     parse_for_parentheses(history);
   } else if (S_EQ(token_peek_next()->sval, "?")) {
     parse_tenary(history);
+  } else if (S_EQ(token_peek_next()->sval, ",")) {
+    parse_for_comma(history);
   } else {
     parse_exp_normal(history);
   }
