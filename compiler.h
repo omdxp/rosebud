@@ -282,6 +282,11 @@ struct node {
       const char *op;
     } exp;
 
+    struct parenthesis {
+      // expression inside the parenthesis node
+      struct node *exp;
+    } paren;
+
     struct var {
       struct datatype type;
       int padding;
@@ -448,6 +453,7 @@ size_t datatype_size(struct datatype *dtype);
 struct node *node_create(struct node *_node);
 void make_exp_node(struct node *left_node, struct node *right_node,
                    const char *op);
+void make_exp_parentheses_node(struct node *exp_node);
 void make_bracket_node(struct node *node);
 void make_body_node(struct vector *body_vec, size_t size, bool padded,
                     struct node *largest_var_node);
@@ -472,6 +478,8 @@ struct node *variable_node(struct node *node);
 struct node *variable_node_or_list(struct node *node);
 bool variable_node_is_primitive(struct node *node);
 bool node_is_struct_or_union_variable(struct node *node);
+bool node_is_expression_or_parentheses(struct node *node);
+bool node_is_value_type(struct node *node);
 
 size_t function_node_argument_stack_addition(struct node *node);
 

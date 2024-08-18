@@ -58,6 +58,11 @@ void make_exp_node(struct node *left_node, struct node *right_node,
                              .exp.op = op});
 }
 
+void make_exp_parentheses_node(struct node *exp_node) {
+  node_create(&(struct node){.type = NODE_TYPE_EXPRESSION_PARENTHESIS,
+                             .paren = exp_node});
+}
+
 struct node *node_create(struct node *_node) {
   struct node *node = malloc(sizeof(struct node));
   memcpy(node, _node, sizeof(struct node));
@@ -180,4 +185,16 @@ struct node *variable_node_or_list(struct node *node) {
 size_t function_node_argument_stack_addition(struct node *node) {
   assert(node->type == NODE_TYPE_FUNCTION);
   return node->func.args.stack_addition;
+}
+
+bool node_is_expression_or_parentheses(struct node *node) {
+  return node->type == NODE_TYPE_EXPRESSION ||
+         node->type == NODE_TYPE_EXPRESSION_PARENTHESIS;
+}
+
+bool node_is_value_type(struct node *node) {
+  return node_is_expression_or_parentheses(node) ||
+         node->type == NODE_TYPE_IDENTIFIER || node->type == NODE_TYPE_NUMBER ||
+         node->type == NODE_TYPE_UNARY || node->type == NODE_TYPE_TENARY ||
+         node->type == NODE_TYPE_STRING;
 }
