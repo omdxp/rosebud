@@ -9,6 +9,32 @@ extern struct node *parser_current_body;
 extern struct expressionable_op_precedence_group
     op_precedence[TOTAL_OPERATOR_GROUPS];
 
+enum {
+  PARSER_SCOPE_ENTITY_ON_STACK = 0b00000001,
+  PARSER_SCOPE_ENTITY_STRUCTURE_SCOPE = 0b00000010,
+};
+
+struct parser_scope_entity {
+  // entity flags of scope entity
+  int flags;
+
+  // stack offset of scope entity
+  int stack_offset;
+
+  // variable declaration
+  struct node *node;
+};
+
+struct parser_scope_entity *
+parser_new_scope_entity(struct node *node, int stack_offset, int flags) {
+  struct parser_scope_entity *entity =
+      calloc(1, sizeof(struct parser_scope_entity));
+  entity->node = node;
+  entity->stack_offset = stack_offset;
+  entity->flags = flags;
+  return entity;
+}
+
 enum { HISTORY_FLAG_INSIDE_UNION = 0b00000001 };
 
 struct history {
@@ -35,6 +61,10 @@ void parse_keyword(struct history *history);
 void parser_scope_new() { scope_new(current_process, 0); }
 
 void parser_scope_finish() { scope_finish(current_process); }
+
+void parser_scope_push(struct node *node, size_t size) {
+  scope_push(current_process, node, size);
+}
 
 static void parser_ignore_nl_or_comment(struct token *token) {
   while (token && token_is_nl_or_comment_or_newline_separator(token)) {
