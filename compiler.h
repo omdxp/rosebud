@@ -387,6 +387,14 @@ struct node {
         // body of the for statement
         struct node *body;
       } for_stmt;
+
+      struct while_stmt {
+        // while (cond) { body }
+        struct node *cond;
+
+        // body of the while statement
+        struct node *body;
+      } while_stmt;
     } stmt;
   };
 
@@ -503,6 +511,7 @@ void make_else_node(struct node *body_node);
 void make_return_node(struct node *exp_node);
 void make_for_node(struct node *init_node, struct node *cond_node,
                    struct node *inc_node, struct node *body_node);
+void make_while_node(struct node *cond_node, struct node *body_node);
 
 struct node *node_pop();
 struct node *node_peek();
