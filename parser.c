@@ -1210,6 +1210,11 @@ void parse_struct_or_union(struct datatype *dtype) {
   }
 }
 
+void parse_forward_declaration(struct datatype *dtype) {
+  // since this is a forward declaration we don't need to parse the body
+  parse_struct(dtype);
+}
+
 void parse_variable_function_or_struct_union(struct history *history) {
   struct datatype dtype;
   parse_datatype(&dtype);
@@ -1219,6 +1224,11 @@ void parse_variable_function_or_struct_union(struct history *history) {
     struct node *su_node = node_pop();
     symresolver_build_for_node(current_process, su_node);
     node_push(su_node);
+    return;
+  }
+
+  if (token_next_is_symbol(';')) {
+    parse_forward_declaration(&dtype);
     return;
   }
 
@@ -1549,9 +1559,6 @@ void parse_expressionable(struct history *history) {
 void parse_keyword_for_global() {
   parse_keyword(history_begin(0));
   struct node *node = node_pop();
-
-  // push the node to the global scope
-#warning "TODO: push node to global scope"
 
   node_push(node);
 }

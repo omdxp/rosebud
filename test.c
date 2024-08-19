@@ -1,1 +1,7 @@
-int main(int argc) { char c = (char)argc; }
+struct S;
+
+struct S {
+  int x;
+};
+
+int main() { struct S *s; }
