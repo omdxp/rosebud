@@ -1,6 +1,14 @@
-union test {
-  int a;
-  char b;
-} test;
+struct book {
+  char title[50];
+  char author[50];
+  char subject[100];
+  int book_id;
+};
 
-int main() {}
+int test(char *fmt) { return 1; }
+
+struct book book;
+int main() {
+  struct book *books;
+  return test(56, books[0].title, 100);
+}
