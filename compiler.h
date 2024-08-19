@@ -324,6 +324,13 @@ struct node {
       struct node *var;
     } _struct;
 
+    struct _union {
+      const char *name;
+      struct node *body_n;
+      // union abc {} var_name; var_name is the variable name
+      struct node *var;
+    } _union;
+
     struct body {
       // vector of struct node*
       struct vector *statements;
@@ -557,6 +564,7 @@ void make_bracket_node(struct node *node);
 void make_body_node(struct vector *body_vec, size_t size, bool padded,
                     struct node *largest_var_node);
 void make_struct_node(const char *name, struct node *body_node);
+void make_union_node(const char *name, struct node *body_node);
 void make_function_node(struct datatype *rtype, const char *name,
                         struct vector *args, struct node *body);
 void make_if_node(struct node *cond_node, struct node *body_node,
@@ -585,6 +593,8 @@ void node_set_vector(struct vector *vec, struct vector *root_vec);
 struct node *node_create(struct node *_node);
 struct node *struct_node_for_name(struct compile_process *process,
                                   const char *name);
+struct node *union_node_for_name(struct compile_process *process,
+                                 const char *name);
 struct node *node_from_symbol(struct compile_process *process,
                               const char *name);
 struct node *node_from_sym(struct symbol *sym);

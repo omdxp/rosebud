@@ -1,7 +1,6 @@
-struct S;
+union test {
+  int a;
+  char b;
+} test;
 
-struct S {
-  int x;
-};
-
-int main() { struct S *s; }
+int main() {}

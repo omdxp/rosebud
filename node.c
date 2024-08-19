@@ -179,6 +179,18 @@ void make_struct_node(const char *name, struct node *body_node) {
                              .flags = flags});
 }
 
+void make_union_node(const char *name, struct node *body_node) {
+  int flags = 0;
+  if (!body_node) {
+    flags |= NODE_FLAG_IS_FORWARD_DECLARATION;
+  }
+
+  node_create(&(struct node){.type = NODE_TYPE_UNION,
+                             ._union.body_n = body_node,
+                             ._union.name = name,
+                             .flags = flags});
+}
+
 void make_function_node(struct datatype *rtype, const char *name,
                         struct vector *args, struct node *body) {
   node_create(&(struct node){.type = NODE_TYPE_FUNCTION,
@@ -223,6 +235,20 @@ struct node *struct_node_for_name(struct compile_process *process,
   return node;
 }
 
+struct node *union_node_for_name(struct compile_process *process,
+                                 const char *name) {
+  struct node *node = node_from_symbol(process, name);
+  if (!node) {
+    return NULL;
+  }
+
+  if (node->type != NODE_TYPE_UNION) {
+    return NULL;
+  }
+
+  return node;
+}
+
 bool node_is_struct_or_union_variable(struct node *node) {
   if (node->type != NODE_TYPE_VARIABLE) {
     return false;
@@ -243,8 +269,7 @@ struct node *variable_node(struct node *node) {
     break;
 
   case NODE_TYPE_UNION:
-    // var_node = node->_union.var;
-    assert(false && "Union variable not implemented");
+    var_node = node->_union.var;
     break;
   }
 
