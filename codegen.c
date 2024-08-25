@@ -203,7 +203,9 @@ void codegen_generate_global_variable_for_primitive(struct node *node) {
   if (node->var.val != NULL) {
     // handle value
     if (node->var.val->type == NODE_TYPE_STRING) {
-#warning "handle string value"
+      const char *label = codegen_register_string(node->var.val->sval);
+      asm_push("%s: %s %s", node->var.name,
+               asm_keyword_for_size(variable_size(node), tmp_buf), label);
     } else {
       asm_push("%s: %s %lld", node->var.name,
                asm_keyword_for_size(variable_size(node), tmp_buf),
@@ -295,7 +297,7 @@ bool codegen_write_string_char_escaped(char c) {
 }
 
 void codegen_write_string(struct string_table_element *element) {
-  asm_push_no_nl("%s db ", element->label);
+  asm_push_no_nl("%s: db ", element->label);
   size_t len = strlen(element->str);
   for (size_t i = 0; i < len; i++) {
     char c = element->str[i];
