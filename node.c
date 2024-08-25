@@ -193,14 +193,15 @@ void make_union_node(const char *name, struct node *body_node) {
 
 void make_function_node(struct datatype *rtype, const char *name,
                         struct vector *args, struct node *body) {
-  node_create(&(struct node){.type = NODE_TYPE_FUNCTION,
-                             .func.rtype = *rtype,
-                             .func.name = name,
-                             .func.args.args = args,
-                             .func.body_n = body,
-                             .func.args.stack_addition = DATA_SIZE_QWORD});
-
-#warning "TODO: build frame elements"
+  struct node *func_node =
+      node_create(&(struct node){.type = NODE_TYPE_FUNCTION,
+                                 .func.rtype = *rtype,
+                                 .func.name = name,
+                                 .func.args.args = args,
+                                 .func.body_n = body,
+                                 .func.args.stack_addition = DATA_SIZE_QWORD});
+  func_node->func.stack_frame.elements =
+      vector_create(sizeof(struct stack_frame_element));
 }
 
 struct node *node_from_sym(struct symbol *sym) {

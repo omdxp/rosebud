@@ -295,6 +295,62 @@ struct datatype {
   } array;
 };
 
+struct stack_frame_data {
+  // data type that the stack frame is for
+  struct datatype *type;
+};
+
+struct stack_frame_element {
+  // stack frame flags
+  int flags;
+
+  // type of the stack frame element
+  int type;
+
+  // name of the stack frame element
+  const char *name;
+
+  // offset from the base pointer
+  int offset_from_bp;
+
+  // data for the stack frame element
+  struct stack_frame_data data;
+};
+
+#define STACK_PUSH_SIZE 4
+
+enum {
+  STACK_FRAME_ELEMENT_TYPE_LOCAL_VARIABLE,
+  STACK_FRAME_ELEMENT_TYPE_SAVED_REGISTER,
+  STACK_FRAME_ELEMENT_TYPE_SAVED_BASE_POINTER,
+  STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+  STACK_FRAME_ELEMENT_TYPE_UNKNOWN,
+};
+
+enum {
+  STACK_FRAME_ELEMENT_FLAG_IS_PUSHED_ADDRESS = 0b00000001,
+  STACK_FRAME_ELEMENT_FLAG_ELEMENT_NOT_FOUND = 0b00000010,
+  STACK_FRAME_ELEMENT_FLAG_IS_NUMERICAL = 0b00000100,
+  STACK_FRAME_ELEMENT_FLAG_HAS_DATA_TYPE = 0b00001000,
+};
+
+void stackframe_pop(struct node *func_node);
+struct stack_frame_element *stackframe_back(struct node *func_node);
+struct stack_frame_element *stackframe_back_expect(struct node *func_node,
+                                                   int expecting_type,
+                                                   const char *expecting_name);
+void stackframe_pop_expecting(struct node *func_node, int expecting_type,
+                              const char *expecting_name);
+void stackframe_peek_start(struct node *func_node);
+struct stack_frame_element *stackframe_peek(struct node *func_node);
+void stackframe_push(struct node *func_node,
+                     struct stack_frame_element *element);
+void stackframe_sub(struct node *func_node, int type, const char *name,
+                    size_t amount);
+void stackframe_add(struct node *func_node, int type, const char *name,
+                    size_t amount);
+void stackframe_assert_empty(struct node *func_node);
+
 struct parsed_switch_case {
   // index of parsed case
   int index;
@@ -399,6 +455,12 @@ struct node {
 
       // body of the function (NULL if it is a function prototype)
       struct node *body_n;
+
+      // stack frame
+      struct stack_frame {
+        // vector of struct stack_frame_element*
+        struct vector *elements;
+      } stack_frame;
 
       // stack size for all the variables in the function
       size_t stack_size;
