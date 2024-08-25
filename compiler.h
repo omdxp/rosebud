@@ -152,7 +152,18 @@ struct codegen_exit_point {
   int id;
 };
 
+struct string_table_element {
+  // string that the element is related to
+  const char *str;
+
+  // assembly label for the string in the .rodata section
+  const char label[50];
+};
+
 struct code_generator {
+  // vector of struct string_table_element*
+  struct vector *string_table;
+
   // vector of struct codegen_entry_point*
   struct vector *entry_points;
 
