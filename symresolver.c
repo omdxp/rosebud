@@ -3,7 +3,7 @@
 
 static void symresolver_push_symbol(struct compile_process *process,
                                     struct symbol *symbol) {
-  vector_push(process->symbols.tables, &symbol);
+  vector_push(process->symbols.table, &symbol);
 }
 
 void symresolver_init(struct compile_process *process) {

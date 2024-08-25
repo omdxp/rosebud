@@ -60,7 +60,7 @@ void make_exp_node(struct node *left_node, struct node *right_node,
 
 void make_exp_parentheses_node(struct node *exp_node) {
   node_create(&(struct node){.type = NODE_TYPE_EXPRESSION_PARENTHESIS,
-                             .paren = exp_node});
+                             .paren.exp = exp_node});
 }
 
 void make_if_node(struct node *cond_node, struct node *body_node,
@@ -196,7 +196,7 @@ void make_function_node(struct datatype *rtype, const char *name,
   node_create(&(struct node){.type = NODE_TYPE_FUNCTION,
                              .func.rtype = *rtype,
                              .func.name = name,
-                             .func.args = args,
+                             .func.args.args = args,
                              .func.body_n = body,
                              .func.args.stack_addition = DATA_SIZE_QWORD});
 
@@ -282,7 +282,7 @@ bool variable_node_is_primitive(struct node *node) {
 }
 
 struct node *variable_node_or_list(struct node *node) {
-  if (node->type == NODE_TYPE_VARIABLE) {
+  if (node->type == NODE_TYPE_VARIABLE_LIST) {
     return node;
   }
 

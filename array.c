@@ -53,7 +53,7 @@ size_t array_brackets_calculate_size(struct datatype *dtype,
 }
 
 int array_total_indexes(struct datatype *dtype) {
-  assert(dtype->type & DATATYPE_FLAG_IS_ARRAY);
+  assert(dtype->flags & DATATYPE_FLAG_IS_ARRAY);
   struct array_brackets *brackets = dtype->array.brackets;
   return vector_count(brackets->n_brackets);
 }

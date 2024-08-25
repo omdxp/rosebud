@@ -85,7 +85,7 @@ struct history *history_down(struct history *history, int flags) {
 
 struct parser_history_switch
 parser_new_switch_statement(struct history *history) {
-  memset(&history->_switch, 0, sizeof(&history->_switch));
+  memset(&history->_switch, 0, sizeof(struct parser_history_switch));
   history->_switch.case_data.cases =
       vector_create(sizeof(struct parsed_switch_case));
   history->flags |= HISTORY_FLAG_IN_SWITCH_STATEMENT;
@@ -294,7 +294,7 @@ void parser_reorder_expression(struct node **node_out) {
   // 50*(30+20)
   // 50*EXPRESSION
   // EXPRESSION(50*EXPRESSION(30+20))
-  if (node->exp.left != NODE_TYPE_EXPRESSION && node->exp.right &&
+  if (node->exp.left->type != NODE_TYPE_EXPRESSION && node->exp.right &&
       node->exp.right->type == NODE_TYPE_EXPRESSION) {
     const char *right_op = node->exp.right->exp.op;
     if (parser_left_op_has_priority(node->exp.op, right_op)) {
@@ -482,7 +482,7 @@ void parser_get_datatype_tokens(struct token **datatype_token,
   }
 }
 
-int paraser_datatype_expected_for_type_string(const char *str) {
+int parser_datatype_expected_for_type_string(const char *str) {
   int type = DATA_TYPE_EXPECT_PRIMITIVE;
   if (S_EQ(str, "struct")) {
     type = DATA_TYPE_EXPECT_STRUCT;
@@ -634,7 +634,7 @@ void parser_datatype_init_type_and_size(struct token *datatype_token,
   case DATA_TYPE_EXPECT_UNION:
     datatype_out->type = DATA_TYPE_UNION;
     datatype_out->size = size_of_union(datatype_token->sval);
-    datatype_out->struct_node =
+    datatype_out->union_node =
         union_node_for_name(current_process, datatype_token->sval);
     break;
 
@@ -654,9 +654,10 @@ void parser_datatype_init(struct token *datatype_token,
   datatype_out->type_str = datatype_token->sval;
   if (S_EQ(datatype_token->sval, "long") && datatype_secondary_token &&
       S_EQ(datatype_secondary_token->sval, "long")) {
-    compiler_warning(current_process,
-                     "Our compiler does support 64-bit longs therfore we are "
-                     "defaulting to 32-bit longs");
+    compiler_warning(
+        current_process,
+        "Our compiler does not support 64-bit longs therfore we are "
+        "defaulting to 32-bit longs");
     datatype_out->size = DATA_SIZE_DWORD;
   }
 }
@@ -666,7 +667,7 @@ void parse_datatype_type(struct datatype *dtype) {
   struct token *datatype_secondary_token = NULL;
   parser_get_datatype_tokens(&datatype_token, &datatype_secondary_token);
   int expected_type =
-      paraser_datatype_expected_for_type_string(datatype_token->sval);
+      parser_datatype_expected_for_type_string(datatype_token->sval);
   if (datatype_is_struct_or_union_for_name(datatype_token->sval)) {
     if (token_peek_next()->type == TOKEN_TYPE_IDENTIFIER) {
       datatype_token = token_next();
@@ -793,9 +794,7 @@ void parser_scope_offset_for_stack(struct node *node, struct history *history) {
 }
 
 void parser_scope_offset_for_global(struct node *node,
-                                    struct history *history) {
-  return;
-}
+                                    struct history *history) {}
 
 void parser_scope_offset_for_struct(struct node *node,
                                     struct history *history) {
@@ -934,7 +933,7 @@ struct vector *parse_function_arguments(struct history *history) {
     struct node *arg_node = node_pop();
     vector_push(args_vec, &arg_node);
 
-    if (!token_next_is_symbol(',')) {
+    if (!token_next_is_operator(",")) {
       break;
     }
 

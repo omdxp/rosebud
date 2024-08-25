@@ -21,7 +21,7 @@ size_t variable_size_for_list(struct node *var_list_node) {
 }
 
 int padding(int val, int to) {
-  if (to < 0) {
+  if (to <= 0) {
     return 0;
   }
 
