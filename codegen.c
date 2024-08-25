@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include "helpers/vector.h"
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -33,6 +34,94 @@ void asm_push(const char *ins, ...) {
   va_start(args, ins);
   asm_push_args(ins, args);
   va_end(args);
+}
+
+struct code_generator *codegenerator_new(struct compile_process *process) {
+  struct code_generator *generator = calloc(1, sizeof(struct code_generator));
+  generator->entry_points = vector_create(sizeof(struct codegen_entry_point *));
+  generator->exit_points = vector_create(sizeof(struct codegen_exit_point *));
+  return generator;
+}
+
+void codegen_register_exit_point(int exit_point_id) {
+  struct code_generator *generator = current_process->generator;
+  struct codegen_exit_point *exit_point =
+      calloc(1, sizeof(struct codegen_exit_point));
+  exit_point->id = exit_point_id;
+  vector_push(generator->exit_points, &exit_point);
+}
+
+struct codegen_exit_point *codegen_current_exit_point() {
+  struct code_generator *generator = current_process->generator;
+  return vector_back_ptr_or_null(generator->exit_points);
+}
+
+int codegen_label_count() {
+  static int label_count = 0;
+  return label_count++;
+}
+
+void codegen_begin_exit_point() {
+  int exit_point_id = codegen_label_count();
+  codegen_register_exit_point(exit_point_id);
+}
+
+void codegen_end_exit_point() {
+  struct code_generator *generator = current_process->generator;
+  struct codegen_exit_point *exit_point = codegen_current_exit_point();
+  assert(exit_point);
+  asm_push(".exit_point_%d:", exit_point->id);
+  free(exit_point);
+  vector_pop(generator->exit_points);
+}
+
+void codegen_goto_exit_point() {
+  struct code_generator *generator = current_process->generator;
+  struct codegen_exit_point *exit_point = codegen_current_exit_point();
+  asm_push("jmp .exit_point_%d", exit_point->id);
+}
+
+void codegen_register_entry_point(int entry_point_id) {
+  struct code_generator *generator = current_process->generator;
+  struct codegen_entry_point *entry_point =
+      calloc(1, sizeof(struct codegen_entry_point));
+  entry_point->id = entry_point_id;
+  vector_push(generator->entry_points, &entry_point);
+}
+
+struct codegen_entry_point *codegen_current_entry_point() {
+  struct code_generator *generator = current_process->generator;
+  return vector_back_ptr_or_null(generator->entry_points);
+}
+
+void codegen_begin_entry_point() {
+  int entry_point_id = codegen_label_count();
+  codegen_register_entry_point(entry_point_id);
+  asm_push(".entry_point_%d:", entry_point_id);
+}
+
+void codegen_end_entry_point() {
+  struct code_generator *generator = current_process->generator;
+  struct codegen_entry_point *entry_point = codegen_current_entry_point();
+  assert(entry_point);
+  free(entry_point);
+  vector_pop(generator->entry_points);
+}
+
+void codegen_goto_entry_point() {
+  struct code_generator *generator = current_process->generator;
+  struct codegen_entry_point *entry_point = codegen_current_entry_point();
+  asm_push("jmp .entry_point_%d", entry_point->id);
+}
+
+void codegen_begin_entry_exit_point() {
+  codegen_begin_entry_point();
+  codegen_begin_exit_point();
+}
+
+void codegen_end_entry_exit_point() {
+  codegen_end_entry_point();
+  codegen_end_exit_point();
 }
 
 static const char *asm_keyword_for_size(size_t size, char *tmp_buf) {
@@ -145,5 +234,9 @@ int codegen(struct compile_process *process) {
 
   // generate read only data section
   codegen_generate_rod();
+
+  codegen_begin_entry_exit_point();
+  codegen_goto_entry_point();
+  codegen_end_entry_exit_point();
   return 0;
 }

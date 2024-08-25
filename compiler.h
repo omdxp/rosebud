@@ -142,6 +142,24 @@ struct scope {
   struct scope *parent;
 };
 
+struct codegen_entry_point {
+  // ID of the entry point
+  int id;
+};
+
+struct codegen_exit_point {
+  // ID of the exit point
+  int id;
+};
+
+struct code_generator {
+  // vector of struct codegen_entry_point*
+  struct vector *entry_points;
+
+  // vector of struct codegen_exit_point*
+  struct vector *exit_points;
+};
+
 enum {
   SYMBOL_TYPE_NODE,
   SYMBOL_TYPE_NATIVE_FUNCTION,
@@ -183,6 +201,9 @@ struct compile_process {
     // all symbol tables
     struct vector *tables;
   } symbols;
+
+  // pointer to code generator
+  struct code_generator *generator;
 };
 
 enum { PARSE_ALL_OK, PARSE_GENERAL_ERROR };
@@ -717,5 +738,6 @@ void *fixup_private(struct fixup *fixup);
 bool fixups_resolve(struct fixup_system *system);
 
 int codegen(struct compile_process *process);
+struct code_generator *codegenerator_new(struct compile_process *process);
 
 #endif
