@@ -1,2 +1,1 @@
-int x;
-int y;
+int a = 50;
