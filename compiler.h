@@ -187,6 +187,8 @@ struct compile_process {
 
 enum { PARSE_ALL_OK, PARSE_GENERAL_ERROR };
 
+enum { CODEGEN_ALL_OK, CODEGEN_GENERAL_ERROR };
+
 enum {
   NODE_TYPE_EXPRESSION,
   NODE_TYPE_EXPRESSION_PARENTHESIS,
@@ -713,5 +715,7 @@ struct fixup *fixup_register(struct fixup_system *system,
 bool fixup_resolve(struct fixup *fixup);
 void *fixup_private(struct fixup *fixup);
 bool fixups_resolve(struct fixup_system *system);
+
+int codegen(struct compile_process *process);
 
 #endif
