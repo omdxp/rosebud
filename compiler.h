@@ -920,6 +920,7 @@ bool token_is_operator(struct token *token, const char *value);
 bool datatype_is_struct_or_union_for_name(const char *name);
 bool datatype_is_struct_or_union(struct datatype *dtype);
 bool datatype_is_primitive(struct datatype *dtype);
+bool datatype_is_struct_or_union_no_pointer(struct datatype *dtype);
 
 bool is_access_operator(const char *op);
 bool is_access_node(struct node *node);
