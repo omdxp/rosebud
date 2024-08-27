@@ -14,6 +14,10 @@ struct resolver_entity *
 resolver_follow_array_bracket(struct resolver_process *process,
                               struct node *node,
                               struct resolver_result *result);
+struct resolver_entity *
+resolver_follow_part_return_entity(struct resolver_process *process,
+                                   struct node *node,
+                                   struct resolver_result *result);
 
 bool resolver_result_failed(struct resolver_result *result) {
   return result->flags & RESOLVER_RESULT_FLAG_FAILED;
@@ -799,9 +803,107 @@ resolver_follow_array_bracket(struct resolver_process *process,
   return array_bracket_entity;
 }
 
-void resolver_follow_part_return_entity(struct resolver_process *process,
-                                        struct node *node,
-                                        struct resolver_result *result) {
+struct resolver_entity *
+resolver_follow_exp_parenheses(struct resolver_process *process,
+                               struct node *node,
+                               struct resolver_result *result) {
+  return resolver_follow_part_return_entity(process, node->paren.exp, result);
+}
+
+struct resolver_entity *
+resolver_follow_unsupported_unary_node(struct resolver_process *process,
+                                       struct node *node,
+                                       struct resolver_result *result) {
+  return resolver_follow_part_return_entity(process, node->unary.operand,
+                                            result);
+}
+
+struct resolver_entity *
+resolver_follow_unsupported_node(struct resolver_process *process,
+                                 struct node *node,
+                                 struct resolver_result *result) {
+  bool followed = false;
+  switch (node->type) {
+  case NODE_TYPE_UNARY:
+    resolver_follow_unsupported_unary_node(process, node, result);
+    followed = false;
+    break;
+
+  default:
+    followed = false;
+    break;
+  }
+
+  struct resolver_entity *unsupported_entity =
+      resolver_create_new_entity_for_unsupported_node(result, node);
+  assert(unsupported_entity);
+  resolver_result_entity_push(result, unsupported_entity);
+  return unsupported_entity;
+}
+
+struct resolver_entity *resolver_follow_cast(struct resolver_process *process,
+                                             struct node *node,
+                                             struct resolver_result *result) {
+  struct resolver_entity *operand_entity = NULL;
+  resolver_follow_unsupported_node(process, node->cast.exp, result);
+  operand_entity = resolver_result_peek(result);
+  operand_entity->flags |= RESOLVER_ENTITY_FLAG_WAS_CASTED;
+
+  struct resolver_entity *cast_entity = resolver_create_new_cast_entity(
+      process, operand_entity->scope, &node->cast.type);
+  resolver_result_entity_push(result, cast_entity);
+  return cast_entity;
+}
+
+struct resolver_entity *
+resolver_follow_indirection(struct resolver_process *process, struct node *node,
+                            struct resolver_result *result) {
+  // indirection (e.g. **a)
+  resolver_follow_part(process, node->unary.operand, result);
+  struct resolver_entity *last_entity = resolver_result_peek(result);
+  if (!last_entity) {
+    last_entity =
+        resolver_follow_unsupported_node(process, node->unary.operand, result);
+  }
+
+  struct resolver_entity *unary_indirection_entity =
+      resolver_create_new_unary_indirection_entity(
+          process, result, node, node->unary.indirection.depth);
+  resolver_result_entity_push(result, unary_indirection_entity);
+  return unary_indirection_entity;
+}
+
+struct resolver_entity *
+resolver_follow_unary_address(struct resolver_process *process,
+                              struct node *node,
+                              struct resolver_result *result) {
+  // address (e.g. &a)
+  resolver_follow_part(process, node->unary.operand, result);
+  struct resolver_entity *last_entity = resolver_result_peek(result);
+  struct resolver_entity *unary_address_entity =
+      resolver_create_new_unary_get_address_entity(
+          process, result, &last_entity->dtype, node, last_entity->scope,
+          last_entity->offset_from_bp);
+  resolver_result_entity_push(result, unary_address_entity);
+  return unary_address_entity;
+}
+struct resolver_entity *resolver_follow_unary(struct resolver_process *process,
+                                              struct node *node,
+                                              struct resolver_result *result) {
+  struct resolver_entity *result_entity = NULL;
+  if (op_is_indirection(node->unary.op)) {
+    result_entity = resolver_follow_indirection(process, node, result);
+  } else if (op_is_address(node->unary.op)) {
+    result_entity = resolver_follow_unary_address(process, node, result);
+  }
+
+  return result_entity;
+}
+
+struct resolver_entity *
+resolver_follow_part_return_entity(struct resolver_process *process,
+                                   struct node *node,
+                                   struct resolver_result *result) {
   struct resolver_entity *entity = NULL;
   switch (node->type) {
   case NODE_TYPE_IDENTIFIER:
@@ -819,7 +921,31 @@ void resolver_follow_part_return_entity(struct resolver_process *process,
   case NODE_TYPE_BRACKET:
     entity = resolver_follow_array_bracket(process, node, result);
     break;
+
+  case NODE_TYPE_EXPRESSION_PARENTHESIS:
+    entity = resolver_follow_exp_parenheses(process, node, result);
+    break;
+
+  case NODE_TYPE_CAST:
+    entity = resolver_follow_cast(process, node, result);
+    break;
+
+  case NODE_TYPE_UNARY:
+    entity = resolver_follow_unary(process, node, result);
+    break;
+
+  default:
+    // can't do anything, this will require runtime computation
+    entity = resolver_follow_unsupported_node(process, node, result);
+    break;
   }
+
+  if (entity) {
+    entity->result = result;
+    entity->process = process;
+  }
+
+  return entity;
 }
 
 void resolver_follow_part(struct resolver_process *process, struct node *node,

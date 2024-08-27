@@ -994,6 +994,7 @@ bool is_array_node(struct node *node);
 bool is_node_assignment(struct node *node);
 bool is_unary_operator(const char *op);
 bool op_is_indirection(const char *op);
+bool op_is_address(const char *op);
 bool node_valid(struct node *node);
 
 size_t function_node_argument_stack_addition(struct node *node);
