@@ -902,6 +902,17 @@ bool datatype_is_struct_or_union_for_name(const char *name);
 bool datatype_is_struct_or_union(struct datatype *dtype);
 bool datatype_is_primitive(struct datatype *dtype);
 
+bool is_access_operator(const char *op);
+bool is_access_node(struct node *node);
+bool is_array_operator(const char *op);
+bool is_array_node(struct node *node);
+bool is_parentheses_operator(const char *op);
+bool is_parentheses_node(struct node *node);
+bool is_access_node_with_op(struct node *node, const char *op);
+bool is_argument_operator(const char *op);
+bool is_argument_node(struct node *node);
+void datatype_decrement_pointer(struct datatype *dtype);
+
 size_t datatype_size_for_array_access(struct datatype *dtype);
 size_t datatype_element_size(struct datatype *dtype);
 size_t datatype_size_no_ptr(struct datatype *dtype);
@@ -961,6 +972,7 @@ bool node_is_value_type(struct node *node);
 bool node_is_expression(struct node *node, const char *op);
 bool is_array_node(struct node *node);
 bool is_node_assignment(struct node *node);
+bool node_valid(struct node *node);
 
 size_t function_node_argument_stack_addition(struct node *node);
 
@@ -975,6 +987,7 @@ size_t array_brackets_calculate_size_from_index(struct datatype *dtype,
 size_t array_brackets_calculate_size(struct datatype *dtype,
                                      struct array_brackets *brackets);
 int array_total_indexes(struct datatype *dtype);
+size_t array_brackets_count(struct datatype *dtype);
 
 struct scope *scope_new(struct compile_process *process, int flags);
 struct scope *scope_create_root(struct compile_process *process);

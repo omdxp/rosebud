@@ -3,6 +3,18 @@
 #include <assert.h>
 #include <stdlib.h>
 
+void resolver_follow_part(struct resolver_process *process, struct node *node,
+                          struct resolver_result *result);
+struct resolver_entity *
+resolver_follow_expression(struct resolver_process *process, struct node *node,
+                           struct resolver_result *result);
+struct resolver_result *resolver_follow(struct resolver_process *process,
+                                        struct node *node);
+struct resolver_entity *
+resolver_follow_array_bracket(struct resolver_process *process,
+                              struct node *node,
+                              struct resolver_result *result);
+
 bool resolver_result_failed(struct resolver_result *result) {
   return result->flags & RESOLVER_RESULT_FLAG_FAILED;
 }
@@ -568,4 +580,275 @@ struct resolver_entity *resolver_get_function(struct resolver_result *result,
                                               const char *func_name) {
   return resolver_get_function_in_scope(result, process, func_name,
                                         process->scopes.root);
+}
+
+struct resolver_entity *
+resolver_follow_for_name(struct resolver_process *process, const char *name,
+                         struct resolver_result *result) {
+  struct resolver_entity *entity =
+      resolver_entity_clone(resolver_get_entity(result, process, name));
+  if (!entity) {
+    return NULL;
+  }
+
+  resolver_result_entity_push(result, entity);
+
+  // first found identifier
+  if (!result->identifier) {
+    result->identifier = entity;
+  }
+
+  if (entity->type == RESOLVER_ENTITY_TYPE_VARIABLE &&
+          datatype_is_struct_or_union(entity->var_data.type) ||
+      entity->type == RESOLVER_ENTITY_TYPE_FUNCTION &&
+          datatype_is_struct_or_union(&entity->dtype)) {
+    result->last_struct_union_entity = entity;
+  }
+
+  return entity;
+}
+
+struct resolver_entity *
+resolver_follow_identifier(struct resolver_process *process, struct node *node,
+                           struct resolver_result *result) {
+  struct resolver_entity *entity =
+      resolver_follow_for_name(process, node->sval, result);
+  if (entity) {
+    entity->last_resolve.referencing_node = node;
+  }
+
+  return entity;
+}
+
+struct resolver_entity *
+resolver_follow_variable(struct resolver_process *process,
+                         struct node *var_node,
+                         struct resolver_result *result) {
+  return resolver_follow_for_name(process, var_node->var.name, result);
+}
+
+struct resolver_entity *
+resolver_follow_struct_expression(struct resolver_process *process,
+                                  struct node *node,
+                                  struct resolver_result *result) {
+  struct resolver_entity *result_entity = NULL;
+  resolver_follow_part(process, node->exp.left, result);
+  struct resolver_entity *left_entity = resolver_result_peek(result);
+  struct resolver_entity_rule rule = {};
+  if (is_access_node_with_op(node, "->")) {
+    // do not merge with the next entity (.e.g. a->b)
+    rule.left.flags = RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_NEXT_ENTITY;
+    if (left_entity->type != RESOLVER_ENTITY_TYPE_FUNCTION_CALL) {
+      rule.right.flags = RESOLVER_ENTITY_FLAG_DO_INDIRECTION;
+    }
+  }
+
+  resolver_new_entity_for_rule(process, result, &rule);
+  resolver_follow_part(process, node->exp.right, result);
+  return NULL;
+}
+
+struct resolver_entity *
+resolver_follow_array_expression(struct resolver_process *process,
+                                 struct node *node,
+                                 struct resolver_result *result) {
+  resolver_follow_part(process, node->exp.left, result);
+  struct resolver_entity *left_entity = resolver_result_peek(result);
+  resolver_follow_part(process, node->exp.right, result);
+  return left_entity;
+}
+
+struct datatype *resolver_get_datatype(struct resolver_process *process,
+                                       struct node *node) {
+  struct resolver_result *result = resolver_follow(process, node);
+  if (!resolver_result_ok(result)) {
+    return NULL;
+  }
+
+  return &result->last_entity->dtype;
+}
+
+void resolver_build_function_call_args(
+    struct resolver_process *process, struct node *arg_node,
+    struct resolver_entity *root_func_call_entity, size_t *total_size_out) {
+  if (is_argument_node(arg_node)) {
+    resolver_build_function_call_args(process, arg_node->exp.left,
+                                      root_func_call_entity, total_size_out);
+    resolver_build_function_call_args(process, arg_node->exp.right,
+                                      root_func_call_entity, total_size_out);
+  } else if (arg_node->type == NODE_TYPE_EXPRESSION_PARENTHESIS) {
+    resolver_build_function_call_args(process, arg_node->paren.exp,
+                                      root_func_call_entity, total_size_out);
+  } else if (node_valid(arg_node)) {
+    vector_push(root_func_call_entity->function_call_data.args, &arg_node);
+    size_t stack_change = DATA_SIZE_DWORD;
+    struct datatype *dtype = resolver_get_datatype(process, arg_node);
+    if (dtype) {
+      // 4 bytes for pointers unless it's a struct or union
+      stack_change = datatype_element_size(dtype);
+      if (stack_change < DATA_SIZE_DWORD) {
+        stack_change = DATA_SIZE_DWORD;
+      }
+
+      stack_change = align_value(stack_change, DATA_SIZE_DWORD);
+    }
+    *total_size_out += stack_change;
+  }
+}
+
+struct resolver_entity *
+resolver_follow_function_call(struct resolver_process *process,
+                              struct node *node,
+                              struct resolver_result *result) {
+  resolver_follow_part(process, node->exp.left, result);
+  struct resolver_entity *left_entity = resolver_result_peek(result);
+  struct resolver_entity *func_call_entity =
+      resolver_create_new_entity_for_function_call(result, process, left_entity,
+                                                   NULL);
+  assert(func_call_entity);
+  func_call_entity->flags |= RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_NEXT_ENTITY |
+                             RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_LEFT_ENTITY;
+  resolver_build_function_call_args(
+      process, node->exp.right, func_call_entity,
+      &func_call_entity->function_call_data.stack_size);
+
+  // push function call entity to the stack
+  resolver_result_entity_push(result, func_call_entity);
+  return func_call_entity;
+}
+
+struct resolver_entity *
+resolver_follow_parentheses_expression(struct resolver_process *process,
+                                       struct node *node,
+                                       struct resolver_result *result) {
+  if (node->exp.left->type == NODE_TYPE_IDENTIFIER) {
+    return resolver_follow_function_call(process, node, result);
+  }
+
+  return resolver_follow_expression(process, node->paren.exp, result);
+}
+
+struct resolver_entity *
+resolver_follow_expression(struct resolver_process *process, struct node *node,
+                           struct resolver_result *result) {
+  struct resolver_entity *entity = NULL;
+  if (is_access_node(node)) {
+    entity = resolver_follow_struct_expression(process, node, result);
+  } else if (is_array_node(node)) {
+    entity = resolver_follow_array_expression(process, node, result);
+  } else if (is_parentheses_node(node)) {
+    entity = resolver_follow_parentheses_expression(process, node, result);
+  }
+
+  return entity;
+}
+
+void resolver_array_bracket_set_flags(struct resolver_entity *entity,
+                                      struct datatype *dtype, struct node *node,
+                                      int index) {
+  if (!(dtype->flags & DATATYPE_FLAG_IS_ARRAY) ||
+      array_brackets_count(dtype) <= index) {
+    entity->flags = RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_NEXT_ENTITY |
+                    RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_LEFT_ENTITY |
+                    RESOLVER_ENTITY_FLAG_IS_POINTER_ARRAY_ENTITY;
+
+  } else if (node->bracket.inner->type != NODE_TYPE_NUMBER) {
+    entity->flags = RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_LEFT_ENTITY |
+                    RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_NEXT_ENTITY;
+  } else {
+    entity->flags = RESOLVER_ENTITY_FLAG_JUST_USE_OFFSET;
+  }
+}
+
+struct resolver_entity *
+resolver_follow_array_bracket(struct resolver_process *process,
+                              struct node *node,
+                              struct resolver_result *result) {
+  assert(node->type == NODE_TYPE_BRACKET);
+  int index = 0;
+  struct datatype dtype;
+  struct resolver_scope *scope = NULL;
+  struct resolver_entity *last_entity =
+      resolver_result_peek_ignore_rule_entity(result);
+  scope = last_entity->scope;
+  dtype = last_entity->dtype;
+  if (last_entity->type == RESOLVER_ENTITY_TYPE_ARRAY_BRACKET) {
+    index = last_entity->array.index + 1;
+  }
+
+  if (dtype.flags & DATATYPE_FLAG_IS_ARRAY) {
+    dtype.array.size = array_brackets_calculate_size_from_index(
+        &dtype, dtype.array.brackets, index + 1);
+  }
+
+  // reduce dtype
+  void *private = process->callbacks.new_array_entity(result, node);
+  struct resolver_entity *array_bracket_entity =
+      resolver_create_new_entity_for_array_bracket(result, process, node,
+                                                   node->bracket.inner, index,
+                                                   &dtype, private, scope);
+  struct resolver_entity_rule rule = {};
+  resolver_array_bracket_set_flags(array_bracket_entity, &dtype, node, index);
+  last_entity->flags |= RESOLVER_ENTITY_FLAG_USES_ARRAY_BRACKETS;
+  if (array_bracket_entity->flags &
+      RESOLVER_ENTITY_FLAG_IS_POINTER_ARRAY_ENTITY) {
+    datatype_decrement_pointer(&array_bracket_entity->dtype);
+  }
+
+  resolver_result_entity_push(result, array_bracket_entity);
+  return array_bracket_entity;
+}
+
+void resolver_follow_part_return_entity(struct resolver_process *process,
+                                        struct node *node,
+                                        struct resolver_result *result) {
+  struct resolver_entity *entity = NULL;
+  switch (node->type) {
+  case NODE_TYPE_IDENTIFIER:
+    entity = resolver_follow_identifier(process, node, result);
+    break;
+
+  case NODE_TYPE_VARIABLE:
+    entity = resolver_follow_variable(process, node, result);
+    break;
+
+  case NODE_TYPE_EXPRESSION:
+    entity = resolver_follow_expression(process, node, result);
+    break;
+
+  case NODE_TYPE_BRACKET:
+    entity = resolver_follow_array_bracket(process, node, result);
+    break;
+  }
+}
+
+void resolver_follow_part(struct resolver_process *process, struct node *node,
+                          struct resolver_result *result) {
+  resolver_follow_part_return_entity(process, node, result);
+}
+
+void resolver_execute_rules(struct resolver_process *process,
+                            struct resolver_result *result) {}
+
+void resolver_merge_compile_times(struct resolver_process *process,
+                                  struct resolver_result *result) {}
+
+void resolver_finalize_result(struct resolver_process *process,
+                              struct resolver_result *result) {}
+
+struct resolver_result *resolver_follow(struct resolver_process *process,
+                                        struct node *node) {
+  assert(process);
+  assert(node);
+
+  struct resolver_result *result = resolver_new_result(process);
+  resolver_follow_part(process, node, result);
+  if (!resolver_result_entity_root(result)) {
+    result->flags |= RESOLVER_RESULT_FLAG_FAILED;
+  }
+
+  resolver_execute_rules(process, result);
+  resolver_merge_compile_times(process, result);
+  resolver_finalize_result(process, result);
+  return result;
 }
