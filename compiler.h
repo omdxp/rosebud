@@ -662,6 +662,40 @@ struct resolver_array_data {
 };
 
 enum {
+  RESOLVER_DEFAULT_ENTITY_TYPE_STACK,
+  RESOLVER_DEFAULT_ENTITY_TYPE_SYMBOL
+};
+
+enum { RESOLVER_DEFAULT_ENTITY_FLAG_IS_LOCAL_STACK = 0b00000001 };
+
+enum {
+  RESOLVER_DEFAULT_ENTITY_DATA_TYPE_VARIABLE,
+  RESOLVER_DEFAULT_ENTITY_DATA_TYPE_FUNCTION,
+  RESOLVER_DEFAULT_ENTITY_DATA_TYPE_ARRAY_BRACKET,
+};
+
+struct resolver_default_entity_data {
+  // data type of the entity
+  int type;
+
+  // address of the entity
+  char address[60];
+
+  // base address of the entity
+  char base_address[60];
+
+  // offset from the base
+  int offset;
+
+  // flags for the entity
+  int flags;
+};
+
+struct resolver_default_scope_data {
+  int flags;
+};
+
+enum {
   RESOLVER_RESULT_FLAG_FAILED = 0b00000001,
   RESOLVER_RESULT_FLAG_RUNTIME_NEEDED_TO_FINISH_PATH = 0b00000010,
   RESOLVER_RESULT_FLAG_PROCESSING_ARRAY_ENTITIES = 0b00000100,
@@ -1110,6 +1144,24 @@ struct fixup *fixup_register(struct fixup_system *system,
 bool fixup_resolve(struct fixup *fixup);
 void *fixup_private(struct fixup *fixup);
 bool fixups_resolve(struct fixup_system *system);
+
+struct resolver_entity *resolver_make_entity(
+    struct resolver_process *process, struct resolver_result *result,
+    struct datatype *custom_dtype, struct node *node,
+    struct resolver_entity *guided_entity, struct resolver_scope *scope);
+struct resolver_process *
+resolver_new_process(struct compile_process *compile_process,
+                     struct resolver_callbacks *callbacks);
+struct resolver_scope *resolver_new_scope(struct resolver_process *process,
+                                          void *private, int flags);
+void resolver_finish_scope(struct resolver_process *process);
+struct resolver_entity *
+resolver_register_function(struct resolver_process *process,
+                           struct node *func_node, void *private);
+struct resolver_entity *
+resolver_new_entity_for_var_node(struct resolver_process *process,
+                                 struct node *var_node, void *private,
+                                 int offset);
 
 int codegen(struct compile_process *process);
 struct code_generator *codegenerator_new(struct compile_process *process);

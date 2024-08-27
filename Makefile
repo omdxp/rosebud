@@ -1,4 +1,4 @@
-OBJECTS= ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
+OBJECTS= ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
 INCLUDES= -I./
 
 all: ${OBJECTS}
@@ -12,6 +12,9 @@ all: ${OBJECTS}
 
 ./build/resolver.o: ./resolver.c
 	gcc ./resolver.c ${INCLUDES} -o ./build/resolver.o -g -c
+
+./build/rdefault.o: ./rdefault.c
+	gcc ./rdefault.c ${INCLUDES} -o ./build/rdefault.o -g -c
 
 ./build/stackframe.o: ./stackframe.c
 	gcc ./stackframe.c ${INCLUDES} -o ./build/stackframe.o -g -c
