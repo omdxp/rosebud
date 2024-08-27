@@ -356,6 +356,23 @@ struct parsed_switch_case {
   int index;
 };
 
+struct node;
+struct unary {
+  // operator of the unary expression (i.e. !, ~, *, etc), even for multiple
+  // pointer access only one operator is stored
+  const char *op;
+
+  // operand of the unary expression
+  struct node *operand;
+
+  union {
+    struct indirection {
+      // depth of the indirection
+      int depth;
+    } indirection;
+  };
+};
+
 struct node {
   int type;
   int flags;
@@ -553,6 +570,8 @@ struct node {
       struct datatype type;
       struct node *exp;
     } cast;
+
+    struct unary unary;
   };
 
   union {
@@ -946,6 +965,7 @@ void make_goto_node(struct node *label_node);
 void make_case_node(struct node *exp_node);
 void make_tenary_node(struct node *true_node, struct node *false_node);
 void make_cast_node(struct datatype *type, struct node *exp_node);
+void make_unary_node(const char *op, struct node *operand_node);
 
 struct node *node_pop();
 struct node *node_peek();
@@ -972,6 +992,8 @@ bool node_is_value_type(struct node *node);
 bool node_is_expression(struct node *node, const char *op);
 bool is_array_node(struct node *node);
 bool is_node_assignment(struct node *node);
+bool is_unary_operator(const char *op);
+bool op_is_indirection(const char *op);
 bool node_valid(struct node *node);
 
 size_t function_node_argument_stack_addition(struct node *node);

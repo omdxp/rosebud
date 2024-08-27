@@ -1,6 +1,3 @@
 const char *hello = "Hello, World!";
 
-int test() {
-  int b;
-  b = 50;
-}
+int test() { int b = *a; }

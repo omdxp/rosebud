@@ -112,6 +112,9 @@ void parse_label(struct history *history);
 void parse_tenary(struct history *history);
 void parse_datatype(struct datatype *dtype);
 void parse_for_cast();
+void parse_for_parentheses(struct history *history);
+void parser_deal_with_additional_expression();
+int parser_get_pointer_depth();
 
 void parser_scope_new() { scope_new(current_process, 0); }
 
@@ -313,11 +316,47 @@ void parser_reorder_expression(struct node **node_out) {
   }
 }
 
+void parse_for_indirection_unary() {
+  int depth = parser_get_pointer_depth();
+  parse_expressionable(history_begin(0));
+  struct node *unary_operand_node = node_pop();
+  make_unary_node("*", unary_operand_node);
+  struct node *unary_node = node_pop();
+  unary_node->unary.indirection.depth = depth;
+  node_push(unary_node);
+}
+
+void parse_for_normal_unary() {
+  const char *unary_op = token_next()->sval;
+  parse_expressionable(history_begin(0));
+  struct node *unary_operand_node = node_pop();
+  make_unary_node(unary_op, unary_operand_node);
+}
+
+void parse_for_unary() {
+  const char *unary_op = token_peek_next()->sval;
+  if (op_is_indirection(unary_op)) {
+    parse_for_indirection_unary();
+    return;
+  }
+
+  parse_for_normal_unary();
+  parser_deal_with_additional_expression();
+}
+
+bool parser_is_unary_operator(const char *op) { return is_unary_operator(op); }
+
 void parse_exp_normal(struct history *history) {
   struct token *op_token = token_peek_next();
   const char *op = op_token->sval;
   struct node *node_left = node_peek_expressionable_or_null();
   if (!node_left) {
+    if (!parser_is_unary_operator(op)) {
+      compiler_error(current_process, "Expected left operand for operator: %s",
+                     op);
+    }
+
+    parse_for_unary();
     return;
   }
 
@@ -327,7 +366,20 @@ void parse_exp_normal(struct history *history) {
   // pop off the left node
   node_pop();
   node_left->flags |= NODE_FLAG_INSIDE_EXPRESSION;
-  parse_expressionable_for_op(history_down(history, history->flags), op);
+  if (token_peek_next()->type == TOKEN_TYPE_OPERATOR) {
+    if (S_EQ(token_peek_next()->sval, "(")) {
+      parse_for_parentheses(history_down(
+          history,
+          history->flags | HISTORY_FLAG_PARENTHESES_IS_NOT_A_FUNCTION_CALL));
+    } else if (parser_is_unary_operator(token_peek_next()->sval)) {
+      parse_for_unary();
+    } else {
+      compiler_error(current_process,
+                     "Expected expressionable for operator: %s", op);
+    }
+  } else {
+    parse_expressionable_for_op(history_down(history, history->flags), op);
+  }
 
   struct node *node_right = node_pop();
   node_right->flags |= NODE_FLAG_INSIDE_EXPRESSION;
