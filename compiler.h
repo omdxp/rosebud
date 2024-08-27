@@ -631,7 +631,7 @@ struct resolver_process {
   } scopes;
 
   // compile process
-  struct compile_process *process;
+  struct compile_process *compile_process;
 
   // resolver callbacks
   struct resolver_callbacks callbacks;
@@ -746,13 +746,10 @@ struct resolver_entity {
     // array
     struct resolver_array {
       // data type of the array
-      struct datatype *type;
+      struct datatype type;
 
       // array index node
       struct node *array_index_node;
-
-      // multiplier for the index
-      size_t multiplier;
 
       // index of the array
       int index;
@@ -796,7 +793,7 @@ struct resolver_entity {
   } last_resolve;
 
   // data type of the entity
-  struct datatype *dtype;
+  struct datatype dtype;
 
   // scope of the entity
   struct resolver_scope *scope;
@@ -856,6 +853,11 @@ enum {
   DATA_SIZE_WORD = 2,
   DATA_SIZE_DWORD = 4,
   DATA_SIZE_QWORD = 8,
+};
+
+enum {
+  STRUCT_ACCESS_BACKWARDS = 0b00000001,
+  STRUCT_STOP_AT_POINTER_ACCESS = 0b00000010,
 };
 
 enum {
@@ -952,6 +954,7 @@ struct node *variable_struct_or_union_body_node(struct node *node);
 struct node *variable_node(struct node *node);
 struct node *variable_node_or_list(struct node *node);
 bool variable_node_is_primitive(struct node *node);
+bool node_is_struct_or_union(struct node *node);
 bool node_is_struct_or_union_variable(struct node *node);
 bool node_is_expression_or_parentheses(struct node *node);
 bool node_is_value_type(struct node *node);
@@ -999,6 +1002,14 @@ int align_value(int val, int to);
 int align_value_treat_positive(int val, int to);
 // get the sum of all the paddings of the variables in a vector
 int compute_sum_padding(struct vector *vec);
+int array_multiplier(struct datatype *dtype, int index, int index_val);
+int array_offset(struct datatype *dtype, int index, int index_val);
+int struct_offset(struct compile_process *compile_process,
+                  const char *struct_name, const char *var_name,
+                  struct node **var_node_out, int last_pos, int flags);
+struct node *
+variable_struct_or_union_largest_variable_node(struct node *var_node);
+struct node *body_larest_variable_node(struct node *body_node);
 
 void symresolver_init(struct compile_process *process);
 void symresolver_new_table(struct compile_process *process);

@@ -87,3 +87,98 @@ struct node *variable_struct_or_union_body_node(struct node *node) {
 
   return NULL;
 }
+
+int array_multiplier(struct datatype *dtype, int index, int index_val) {
+  if (!(dtype->flags & DATATYPE_FLAG_IS_ARRAY)) {
+    return index_val;
+  }
+
+  vector_set_peek_pointer(dtype->array.brackets->n_brackets, index + 1);
+  int size_sum = index_val;
+  struct node *bracket_node =
+      vector_peek_ptr(dtype->array.brackets->n_brackets);
+  while (bracket_node) {
+    assert(bracket_node->bracket.inner->type == NODE_TYPE_NUMBER);
+    int declared_index = bracket_node->bracket.inner->llnum;
+    int size_val = declared_index;
+    size_sum *= size_val;
+    bracket_node = vector_peek_ptr(dtype->array.brackets->n_brackets);
+  }
+
+  return size_sum;
+}
+
+int array_offset(struct datatype *dtype, int index, int index_val) {
+  if (!(dtype->flags & DATATYPE_FLAG_IS_ARRAY) ||
+      (index == vector_count(dtype->array.brackets->n_brackets) - 1)) {
+    return index_val * datatype_element_size(dtype);
+  }
+
+  return array_multiplier(dtype, index, index_val) *
+         datatype_element_size(dtype);
+}
+
+struct node *body_larest_variable_node(struct node *body_node) {
+  if (!body_node) {
+    return NULL;
+  }
+
+  if (body_node->type != NODE_TYPE_BODY) {
+    return NULL;
+  }
+
+  return body_node->body.largest_variable_node;
+}
+
+struct node *
+variable_struct_or_union_largest_variable_node(struct node *var_node) {
+  return body_larest_variable_node(
+      variable_struct_or_union_body_node(var_node));
+}
+
+int struct_offset(struct compile_process *compile_process,
+                  const char *struct_name, const char *var_name,
+                  struct node **var_node_out, int last_pos, int flags) {
+  struct symbol *struct_sym =
+      symresolver_get_symbol(compile_process, struct_name);
+  assert(struct_sym && struct_sym->type == SYMBOL_TYPE_NODE);
+  struct node *node = struct_sym->data;
+  assert(node_is_struct_or_union(node));
+
+  struct vector *struct_vars_vec = node->_struct.body_n->body.statements;
+  vector_set_peek_pointer(struct_vars_vec, 0);
+  if (flags & STRUCT_ACCESS_BACKWARDS) {
+    vector_set_peek_pointer_end(struct_vars_vec);
+    vector_set_flag(struct_vars_vec, VECTOR_FLAG_PEEK_DECREMENT);
+  }
+
+  struct node *var_node_cur = variable_node(vector_peek_ptr(struct_vars_vec));
+  struct node *var_node_last = NULL;
+  int position = last_pos;
+  *var_node_out = NULL;
+  while (var_node_cur) {
+    *var_node_out = var_node_cur;
+    if (var_node_last) {
+      position += variable_size(var_node_last);
+      if (variable_node_is_primitive(var_node_cur)) {
+        position =
+            align_value_treat_positive(position, var_node_cur->var.type.size);
+      } else {
+        position = align_value_treat_positive(
+            position,
+            variable_struct_or_union_largest_variable_node(var_node_cur)
+                ->var.type.size);
+      }
+    }
+
+    if (S_EQ(var_node_cur->var.name, var_name)) {
+      break;
+    }
+
+    var_node_last = var_node_cur;
+    var_node_cur = variable_node(vector_peek_ptr(struct_vars_vec));
+  }
+
+  vector_unset_flag(struct_vars_vec, VECTOR_FLAG_PEEK_DECREMENT);
+  return position;
+}

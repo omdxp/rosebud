@@ -250,6 +250,10 @@ struct node *union_node_for_name(struct compile_process *process,
   return node;
 }
 
+bool node_is_struct_or_union(struct node *node) {
+  return node->type == NODE_TYPE_STRUCT || node->type == NODE_TYPE_UNION;
+}
+
 bool node_is_struct_or_union_variable(struct node *node) {
   if (node->type != NODE_TYPE_VARIABLE) {
     return false;
