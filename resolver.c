@@ -603,7 +603,7 @@ resolver_follow_for_name(struct resolver_process *process, const char *name,
   }
 
   if (entity->type == RESOLVER_ENTITY_TYPE_VARIABLE &&
-          datatype_is_struct_or_union(entity->var_data.type) ||
+          datatype_is_struct_or_union(&entity->var_data.type) ||
       entity->type == RESOLVER_ENTITY_TYPE_FUNCTION &&
           datatype_is_struct_or_union(&entity->dtype)) {
     result->last_struct_union_entity = entity;

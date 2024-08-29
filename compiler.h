@@ -308,7 +308,7 @@ struct datatype {
 
 struct stack_frame_data {
   // data type that the stack frame is for
-  struct datatype type;
+  struct datatype dtype;
 };
 
 struct stack_frame_element {
@@ -1253,6 +1253,12 @@ struct resolver_default_scope_data *
 resolver_default_scope_private(struct resolver_scope *scope);
 struct resolver_default_entity_data *
 resolver_default_entity_private(struct resolver_entity *entity);
+struct resolver_result *resolver_follow(struct resolver_process *process,
+                                        struct node *node);
+bool resolver_result_ok(struct resolver_result *result);
+struct resolver_entity *
+resolver_result_entity_root(struct resolver_result *result);
+struct resolver_entity *resolver_entity_next(struct resolver_entity *entity);
 
 int codegen(struct compile_process *process);
 struct code_generator *codegenerator_new(struct compile_process *process);
