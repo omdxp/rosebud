@@ -54,3 +54,12 @@ bool datatype_is_struct_or_union_no_pointer(struct datatype *dtype) {
   return dtype->type != DATA_TYPE_UNKNOWN && !datatype_is_primitive(dtype) &&
          !(dtype->flags & DATATYPE_FLAG_IS_POINTER);
 }
+
+struct datatype datatype_for_numeric() {
+  struct datatype dtype = {};
+  dtype.flags |= DATATYPE_FLAG_IS_LITERAL;
+  dtype.type = DATA_TYPE_INT;
+  dtype.type_str = "int";
+  dtype.size = DATA_SIZE_DWORD;
+  return dtype;
+}
