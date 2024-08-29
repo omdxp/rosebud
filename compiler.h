@@ -5,6 +5,12 @@
 #include <string.h>
 
 #define S_EQ(str1, str2) (str1 && str2 && (strcmp(str1, str2) == 0))
+#define STACK_PUSH_SIZE 4
+#define C_STACK_ALIGNMENT 16
+#define C_ALIGN(size)                                                          \
+  (size % C_STACK_ALIGNMENT)                                                   \
+      ? size + (C_STACK_ALIGNMENT - (size % C_STACK_ALIGNMENT))                \
+      : size
 
 struct pos {
   int line;
@@ -183,6 +189,8 @@ struct symbol {
   void *data;
 };
 
+struct resolver_process;
+
 struct compile_process {
   // The flags in regard on how this file should be compiled
   int flags;
@@ -215,6 +223,9 @@ struct compile_process {
 
   // pointer to code generator
   struct code_generator *generator;
+
+  // pointer to resolver process
+  struct resolver_process *resolver;
 };
 
 enum { PARSE_ALL_OK, PARSE_GENERAL_ERROR };
@@ -909,6 +920,10 @@ enum {
 };
 
 enum {
+  IS_ALONE_STATEMENT = 0b00000001,
+};
+
+enum {
   STRUCT_ACCESS_BACKWARDS = 0b00000001,
   STRUCT_STOP_AT_POINTER_ACCESS = 0b00000010,
 };
@@ -1031,8 +1046,11 @@ bool is_unary_operator(const char *op);
 bool op_is_indirection(const char *op);
 bool op_is_address(const char *op);
 bool node_valid(struct node *node);
+bool function_node_is_prototype(struct node *node);
 
+size_t function_node_stack_size(struct node *node);
 size_t function_node_argument_stack_addition(struct node *node);
+struct vector *function_node_argument_vec(struct node *node);
 
 struct array_brackets *array_brackets_new();
 void array_brackets_free(struct array_brackets *brackets);
@@ -1162,6 +1180,47 @@ struct resolver_entity *
 resolver_new_entity_for_var_node(struct resolver_process *process,
                                  struct node *var_node, void *private,
                                  int offset);
+struct resolver_process *
+resolver_default_new_process(struct compile_process *compile_process);
+struct resolver_entity *resolver_default_merge_entities(
+    struct resolver_process *process, struct resolver_result *result,
+    struct resolver_entity *left_entity, struct resolver_entity *right_entity);
+void resolver_default_delete_scope(struct resolver_scope *scope);
+void resolver_default_delete_entity(struct resolver_entity *entity);
+void *resolver_default_new_array_entity(struct resolver_result *result,
+                                        struct node *array_entity_node);
+void resolver_default_finish_scope(struct resolver_process *process);
+void resolver_default_new_scope(struct resolver_process *process, int flags);
+struct resolver_entity *
+resolver_default_register_function(struct resolver_process *process,
+                                   struct node *func_node, int flags);
+struct resolver_entity *
+resolver_default_new_scope_entity(struct resolver_process *process,
+                                  struct node *var_node, int offset, int flags);
+struct resolver_default_entity_data *
+resolver_default_new_entity_data_for_function(struct node *func_node,
+                                              int flags);
+struct resolver_default_entity_data *
+resolver_default_new_entity_data_for_array_bracket(struct node *bracket_node);
+struct resolver_default_entity_data *
+resolver_default_new_entity_for_var_node(struct node *var_node, int offset,
+                                         int flags);
+void resolver_default_set_result_base(struct resolver_result *result,
+                                      struct resolver_entity *base_entity);
+void *resolver_default_make_private(struct resolver_entity *entity,
+                                    struct node *node, int offset,
+                                    struct resolver_scope *scope);
+void resolver_default_entity_data_set_address(
+    struct resolver_default_entity_data *entity_data, struct node *var_node,
+    int offset, int flags);
+void resolver_default_global_asm_address(const char *name, int offset,
+                                         char *address_out);
+struct resolver_default_entity_data *resolver_default_new_entity_data();
+char *resolver_default_stack_asm_address(int stack_offset, char *out);
+struct resolver_default_scope_data *
+resolver_default_scope_private(struct resolver_scope *scope);
+struct resolver_default_entity_data *
+resolver_default_entity_private(struct resolver_entity *entity);
 
 int codegen(struct compile_process *process);
 struct code_generator *codegenerator_new(struct compile_process *process);

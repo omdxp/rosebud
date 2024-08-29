@@ -70,13 +70,13 @@ struct history {
   } _switch;
 };
 
-struct history *history_begin(int flags) {
+static struct history *history_begin(int flags) {
   struct history *history = calloc(1, sizeof(struct history));
   history->flags = flags;
   return history;
 }
 
-struct history *history_down(struct history *history, int flags) {
+static struct history *history_down(struct history *history, int flags) {
   struct history *new_history = calloc(1, sizeof(struct history));
   memcpy(new_history, history, sizeof(struct history));
   new_history->flags = flags;
