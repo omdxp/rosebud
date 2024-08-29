@@ -66,7 +66,7 @@ void *resolver_default_make_private(struct resolver_entity *entity,
   struct resolver_default_entity_data *entity_data =
       resolver_default_new_entity_data();
   int entity_flags = 0x00;
-  if (entity_flags & RESOLVER_ENTITY_FLAG_IS_STACK) {
+  if (entity->flags & RESOLVER_ENTITY_FLAG_IS_STACK) {
     entity_flags |= RESOLVER_DEFAULT_ENTITY_FLAG_IS_LOCAL_STACK;
   }
 

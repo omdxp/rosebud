@@ -117,7 +117,7 @@ resolver_result_peek_ignore_rule_entity(struct resolver_result *result) {
 }
 
 struct resolver_entity *resolver_result_pop(struct resolver_result *result) {
-  if (!result->last_entity) {
+  if (!result->entity) {
     return NULL;
   }
 
@@ -211,7 +211,6 @@ resolver_create_new_entity(struct resolver_result *result, int type,
 
   entity->type = type;
   entity->private = private;
-  entity->result = result;
   return entity;
 }
 
@@ -327,6 +326,7 @@ struct resolver_entity *resolver_create_new_unary_get_address_entity(
   entity->scope = scope;
   entity->flags = RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_NEXT_ENTITY |
                   RESOLVER_ENTITY_FLAG_NO_MERGE_WITH_LEFT_ENTITY;
+  entity->node = node;
   entity->dtype = *dtype;
   entity->dtype.flags |= DATATYPE_FLAG_IS_POINTER;
   entity->dtype.pointer_depth++;
@@ -635,7 +635,6 @@ struct resolver_entity *
 resolver_follow_struct_expression(struct resolver_process *process,
                                   struct node *node,
                                   struct resolver_result *result) {
-  struct resolver_entity *result_entity = NULL;
   resolver_follow_part(process, node->exp.left, result);
   struct resolver_entity *left_entity = resolver_result_peek(result);
   struct resolver_entity_rule rule = {};
@@ -702,8 +701,8 @@ void resolver_build_function_call_args(
 
 struct resolver_entity *
 resolver_follow_function_call(struct resolver_process *process,
-                              struct node *node,
-                              struct resolver_result *result) {
+                              struct resolver_result *result,
+                              struct node *node) {
   resolver_follow_part(process, node->exp.left, result);
   struct resolver_entity *left_entity = resolver_result_peek(result);
   struct resolver_entity *func_call_entity =
@@ -726,7 +725,7 @@ resolver_follow_parentheses_expression(struct resolver_process *process,
                                        struct node *node,
                                        struct resolver_result *result) {
   if (node->exp.left->type == NODE_TYPE_IDENTIFIER) {
-    return resolver_follow_function_call(process, node, result);
+    return resolver_follow_function_call(process, result, node);
   }
 
   return resolver_follow_expression(process, node->paren.exp, result);
@@ -887,6 +886,7 @@ resolver_follow_unary_address(struct resolver_process *process,
   resolver_result_entity_push(result, unary_address_entity);
   return unary_address_entity;
 }
+
 struct resolver_entity *resolver_follow_unary(struct resolver_process *process,
                                               struct node *node,
                                               struct resolver_result *result) {

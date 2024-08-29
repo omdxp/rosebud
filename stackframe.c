@@ -8,8 +8,7 @@ void stackframe_pop(struct node *func_node) {
 }
 
 struct stack_frame_element *stackframe_back(struct node *func_node) {
-  struct stack_frame *frame = &func_node->func.stack_frame;
-  return vector_back_or_null(frame->elements);
+  return vector_back_or_null(func_node->func.stack_frame.elements);
 }
 
 struct stack_frame_element *stackframe_back_expect(struct node *func_node,
