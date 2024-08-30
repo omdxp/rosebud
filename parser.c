@@ -48,7 +48,7 @@ struct parser_scope_entity *parser_scope_last_entity_stop_global_scope() {
 enum {
   HISTORY_FLAG_INSIDE_UNION = 0b00000001,
   HISTORY_FLAG_IS_UPWARD_STACK = 0b00000010,
-  HISTORY_FLAG_IS_GLOBAL_SCOPE = 0b000000100,
+  HISTORY_FLAG_IS_GLOBAL_SCOPE = 0b00000100,
   HISTORY_FLAG_INSIDE_STRUCT = 0b00001000,
   HISTORY_FLAG_INSIDE_FUNCTION_BODY = 0b00010000,
   HISTORY_FLAG_IN_SWITCH_STATEMENT = 0b00100000,
@@ -693,6 +693,11 @@ void parser_datatype_init_type_and_size(struct token *datatype_token,
   default:
     compiler_error(current_process, "Invalid expected type: %d\n",
                    expected_type);
+  }
+
+  if (pointer_depth > 0) {
+    datatype_out->flags |= DATATYPE_FLAG_IS_POINTER;
+    datatype_out->pointer_depth = pointer_depth;
   }
 }
 

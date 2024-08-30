@@ -245,7 +245,7 @@ struct resolver_entity *resolver_create_new_entity_for_array_bracket(
   entity->dtype = *dtype;
   entity->node = node;
   entity->array.index = index;
-  entity->array.type = *dtype;
+  entity->array.dtype = *dtype;
   entity->array.array_index_node = array_index_node;
   int array_index_val = 1;
   if (array_index_node->type == NODE_TYPE_NUMBER) {
@@ -272,7 +272,7 @@ struct resolver_entity *resolver_create_new_entity_for_merged_array_bracket(
   entity->dtype = *dtype;
   entity->node = node;
   entity->array.index = index;
-  entity->array.type = *dtype;
+  entity->array.dtype = *dtype;
   entity->array.array_index_node = array_index_node;
   return entity;
 }
@@ -603,7 +603,7 @@ resolver_follow_for_name(struct resolver_process *process, const char *name,
   }
 
   if (entity->type == RESOLVER_ENTITY_TYPE_VARIABLE &&
-          datatype_is_struct_or_union(&entity->var_data.type) ||
+          datatype_is_struct_or_union(&entity->var_data.dtype) ||
       entity->type == RESOLVER_ENTITY_TYPE_FUNCTION &&
           datatype_is_struct_or_union(&entity->dtype)) {
     result->last_struct_union_entity = entity;

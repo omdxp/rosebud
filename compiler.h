@@ -800,12 +800,12 @@ struct resolver_entity {
     // data for the variable entity
     struct resolver_entity_var_data {
       // data type of the variable
-      struct datatype *type;
+      struct datatype dtype;
 
       // array runtime data
       struct resolver_array_runtime {
         // data type of the array
-        struct datatype *type;
+        struct datatype dtype;
 
         // node to index the array
         struct node *index_node;
@@ -818,7 +818,7 @@ struct resolver_entity {
     // array
     struct resolver_array {
       // data type of the array
-      struct datatype type;
+      struct datatype dtype;
 
       // array index node
       struct node *array_index_node;
