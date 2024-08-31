@@ -982,10 +982,9 @@ enum {
    EXPRESSION_IS_ABOVE_OR_EQUAL | EXPRESSION_IS_BELOW |                        \
    EXPRESSION_IS_BELOW_OR_EQUAL | EXPRESSION_IS_EQUAL |                        \
    EXPRESSION_IS_NOT_EQUAL | EXPRESSION_LOGICAL_AND |                          \
-   EXPRESSION_IS_IN_LOGICAL_EXPRESSION | EXPRESSION_IS_BITSHIFT_LEFT |         \
-   EXPRESSION_IS_BITSHIFT_RIGHT | EXPRESSION_IS_BITWISE_OR |                   \
-   EXPRESSION_IS_BITWISE_AND | EXPRESSION_IS_BITWISE_XOR |                     \
-   EXPRESSION_IS_ASSIGNMENT | IS_ALONE_STATEMENT)
+   EXPRESSION_IS_BITSHIFT_LEFT | EXPRESSION_IS_BITSHIFT_RIGHT |                \
+   EXPRESSION_IS_BITWISE_OR | EXPRESSION_IS_BITWISE_AND |                      \
+   EXPRESSION_IS_BITWISE_XOR | EXPRESSION_IS_ASSIGNMENT | IS_ALONE_STATEMENT)
 
 enum {
   STRUCT_ACCESS_BACKWARDS = 0b00000001,
@@ -1115,6 +1114,8 @@ bool op_is_indirection(const char *op);
 bool op_is_address(const char *op);
 bool node_valid(struct node *node);
 bool function_node_is_prototype(struct node *node);
+bool is_logical_operator(const char *op);
+bool is_logical_node(struct node *node);
 
 size_t function_node_stack_size(struct node *node);
 size_t function_node_argument_stack_addition(struct node *node);

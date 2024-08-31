@@ -1,6 +1,5 @@
 
 int main() {
-  int *a;
-  int *b;
-  b = a + 1;
+  int a;
+  a = 1 && 1;
 }
