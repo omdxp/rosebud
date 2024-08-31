@@ -1,5 +1,3 @@
+int test(int a) {}
 
-int main() {
-  int a;
-  a = 1 && 1;
-}
+int main() { test(2024); }
