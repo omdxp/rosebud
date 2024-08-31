@@ -147,7 +147,7 @@ void make_tenary_node(struct node *true_node, struct node *false_node) {
 
 void make_cast_node(struct datatype *dtype, struct node *exp_node) {
   node_create(&(struct node){
-      .type = NODE_TYPE_CAST, .cast.type = *dtype, .cast.exp = exp_node});
+      .type = NODE_TYPE_CAST, .cast.dtype = *dtype, .cast.exp = exp_node});
 }
 
 struct node *node_create(struct node *_node) {

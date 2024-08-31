@@ -849,7 +849,7 @@ struct resolver_entity *resolver_follow_cast(struct resolver_process *process,
   operand_entity->flags |= RESOLVER_ENTITY_FLAG_WAS_CASTED;
 
   struct resolver_entity *cast_entity = resolver_create_new_cast_entity(
-      process, operand_entity->scope, &node->cast.type);
+      process, operand_entity->scope, &node->cast.dtype);
   resolver_result_entity_push(result, cast_entity);
   return cast_entity;
 }

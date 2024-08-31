@@ -88,6 +88,7 @@ static struct history *history_down(struct history *history, int flags) {
 }
 
 void codegen_generate_exp_node(struct node *node, struct history *history);
+const char *codegen_sub_register(const char *original_register, size_t size);
 
 void codegen_new_scope(int flags) {
   resolver_default_new_scope(current_process->resolver, flags);
@@ -471,6 +472,63 @@ bool codegen_is_exp_root(struct history *history) {
   return codegen_is_exp_root_for_flags(history->flags);
 }
 
+void codegen_reduce_register(const char *reg, size_t size, bool is_signed) {
+  if (size != DATA_SIZE_DWORD) {
+    const char *ins = "movsx";
+    if (!is_signed) {
+      ins = "movzx";
+    }
+
+    asm_push("%s %s, %s", ins, reg, codegen_sub_register(reg, size));
+  }
+}
+
+void codegen_gen_mem_access(struct node *node, int flags,
+                            struct resolver_entity *entity) {
+#warning "to generate & address"
+#warning "generate struct"
+
+  if (datatype_element_size(&entity->dtype) != DATA_SIZE_DWORD) {
+    asm_push("mov eax, [%s]", codegen_entity_private(entity)->address);
+    codegen_reduce_register("eax", datatype_element_size(&entity->dtype),
+                            entity->dtype.flags & DATATYPE_FLAG_IS_SIGNED);
+    asm_push_ins_push_with_data(
+        "eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE, "result_value", 0,
+        &(struct stack_frame_data){.dtype = entity->dtype});
+  } else {
+    // push straight to stack
+    asm_push_ins_push_with_data(
+        "dword [%s]", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE, "result_value", 0,
+        &(struct stack_frame_data){.dtype = entity->dtype},
+        codegen_entity_private(entity)->address);
+  }
+}
+
+void codegen_generate_variable_access_for_entity(struct node *node,
+                                                 struct resolver_entity *entity,
+                                                 struct history *history) {
+  codegen_gen_mem_access(node, history->flags, entity);
+}
+
+void codegen_generate_variable_access(struct node *node,
+                                      struct resolver_entity *entity,
+                                      struct history *history) {
+  codegen_generate_variable_access_for_entity(
+      node, entity, history_down(history, history->flags));
+}
+
+void codegen_generate_identifier_node(struct node *node,
+                                      struct history *history) {
+  struct resolver_result *result =
+      resolver_follow(current_process->resolver, node);
+  assert(resolver_result_ok(result));
+
+  struct resolver_entity *entity = resolver_result_entity(result);
+  codegen_generate_variable_access(node, entity, history);
+  codegen_response_acknowledge(&(struct response){
+      .flags = RESPONSE_FLAG_RESOLVED_ENTITY, .data.resolved_entity = entity});
+}
+
 void codegen_generate_expressionable(struct node *node,
                                      struct history *history) {
   bool is_root = codegen_is_exp_root(history);
@@ -485,6 +543,10 @@ void codegen_generate_expressionable(struct node *node,
 
   case NODE_TYPE_EXPRESSION:
     codegen_generate_exp_node(node, history);
+    break;
+
+  case NODE_TYPE_IDENTIFIER:
+    codegen_generate_identifier_node(node, history);
     break;
   }
 }

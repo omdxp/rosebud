@@ -586,7 +586,7 @@ struct node {
 
     struct cast {
       // (type) exp
-      struct datatype type;
+      struct datatype dtype;
       struct node *exp;
     } cast;
 
@@ -1292,6 +1292,7 @@ bool resolver_result_ok(struct resolver_result *result);
 struct resolver_entity *
 resolver_result_entity_root(struct resolver_result *result);
 struct resolver_entity *resolver_entity_next(struct resolver_entity *entity);
+struct resolver_entity *resolver_result_entity(struct resolver_result *result);
 
 int codegen(struct compile_process *process);
 struct code_generator *codegenerator_new(struct compile_process *process);
