@@ -811,7 +811,7 @@ struct resolver_entity {
         struct node *index_node;
 
         // multiplier for the index
-        size_t multiplier;
+        int multiplier;
       } array_runtime;
     } var_data;
 

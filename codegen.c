@@ -273,8 +273,7 @@ const char *codegen_register_string(const char *str) {
   int label_id = codegen_label_count();
   sprintf((char *)element->label, "str_%d", label_id);
   element->str = str;
-  struct code_generator *generator = current_process->generator;
-  vector_push(generator->string_table, &element);
+  vector_push(current_process->generator->string_table, &element);
   return element->label;
 }
 
@@ -1025,9 +1024,6 @@ void codegen_gen_math_for_value(const char *reg, const char *value, int flags,
 
 void codegen_setup_new_logical_expression(struct history *history,
                                           struct node *node) {
-  bool start_of_logical_exp =
-      !(history->flags & EXPRESSION_IS_IN_LOGICAL_EXPRESSION);
-
   int label_index = codegen_label_count();
   sprintf(history->exp.logical_end_label, ".endc_%d", label_index);
   sprintf(history->exp.logical_end_label_positive, ".endc_%d_positive",
@@ -1284,12 +1280,13 @@ bool codegen_write_string_char_escaped(char c) {
   case '\\':
     cout = "92";
     break;
-  default:
-    return false;
   }
 
-  asm_push_no_nl("%s, ", cout);
-  return true;
+  if (cout) {
+    asm_push_no_nl("%s, ", cout);
+  }
+
+  return cout != NULL;
 }
 
 void codegen_write_string(struct string_table_element *element) {
@@ -1298,9 +1295,11 @@ void codegen_write_string(struct string_table_element *element) {
   for (size_t i = 0; i < len; i++) {
     char c = element->str[i];
     bool handled = codegen_write_string_char_escaped(c);
-    if (!handled) {
-      asm_push_no_nl("'%c', ", c);
+    if (handled) {
+      continue;
     }
+
+    asm_push_no_nl("'%c', ", c);
   }
 
   asm_push_no_nl("0");

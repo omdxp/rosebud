@@ -195,7 +195,7 @@ resolver_new_process(struct compile_process *compile_process,
                      struct resolver_callbacks *callbacks) {
   struct resolver_process *process = calloc(1, sizeof(struct resolver_process));
   process->compile_process = compile_process;
-  memcpy(&process->callbacks, callbacks, sizeof(struct resolver_callbacks));
+  memcpy(&process->callbacks, callbacks, sizeof(process->callbacks));
   process->scopes.root = resolver_new_scope_create();
   process->scopes.current = process->scopes.root;
   return process;
@@ -405,7 +405,7 @@ resolver_new_entity_for_var_node(struct resolver_process *process,
     return NULL;
   }
 
-  vector_push(resolver_process_scope_current(process)->entities, &entity);
+  vector_push(process->scopes.current->entities, &entity);
   return entity;
 }
 
@@ -414,10 +414,6 @@ void resolver_new_entity_for_rule(struct resolver_process *process,
                                   struct resolver_entity_rule *rule) {
   struct resolver_entity *entity =
       resolver_create_new_entity(result, RESOLVER_ENTITY_TYPE_RULE, NULL);
-  if (!entity) {
-    return;
-  }
-
   entity->rule = *rule;
   resolver_result_entity_push(result, entity);
 }
@@ -525,7 +521,6 @@ struct resolver_entity *resolver_get_entity_in_scope_with_entity_type(
     current = vector_peek_ptr(scope->entities);
   }
 
-  vector_unset_flag(scope->entities, VECTOR_FLAG_PEEK_DECREMENT);
   return current;
 }
 
@@ -533,7 +528,7 @@ struct resolver_entity *
 resolver_get_entity_for_type(struct resolver_result *result,
                              struct resolver_process *process,
                              const char *entity_name, int entity_type) {
-  struct resolver_scope *scope = resolver_process_scope_current(process);
+  struct resolver_scope *scope = process->scopes.current;
   struct resolver_entity *entity = NULL;
   while (scope) {
     entity = resolver_get_entity_in_scope_with_entity_type(
@@ -546,7 +541,8 @@ resolver_get_entity_for_type(struct resolver_result *result,
   }
 
   if (entity) {
-    memset(&entity->last_resolve, 0, sizeof(struct resolver_entity));
+    memset(&entity->last_resolve, 0,
+           sizeof(entity->last_resolve)); // spent days to fix this one line
   }
 
   return entity;

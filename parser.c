@@ -1017,7 +1017,7 @@ void parse_function(struct datatype *rtype, struct token *name_token,
                     struct history *history) {
   struct vector *args_vec = NULL;
   parser_scope_new();
-  make_function_node(rtype, name_token->sval, args_vec, NULL);
+  make_function_node(rtype, name_token->sval, NULL, NULL);
   struct node *function_node = node_peek();
   parser_current_function = function_node;
   if (datatype_is_struct_or_union(rtype)) {

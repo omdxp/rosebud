@@ -45,11 +45,15 @@ int fixup_sys_unresolved_count(struct fixup_system *system) {
   fixup_start_iteration(system);
   struct fixup *fixup = fixup_next(system);
   while (fixup) {
-    if (!(fixup->flags & FIXUP_FLAG_RESOLVED)) {
-      count++;
+    if (fixup->flags & FIXUP_FLAG_RESOLVED) {
+      fixup = fixup_next(system);
+      continue;
     }
+
+    count++;
     fixup = fixup_next(system);
   }
+
   return count;
 }
 
