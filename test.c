@@ -1,6 +1,6 @@
 
 int main() {
-  int b = 2024;
-  int a = 1024;
-  a = a + b;
+  int *a;
+  int *b;
+  b = a + 1;
 }

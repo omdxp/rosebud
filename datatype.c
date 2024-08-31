@@ -1,4 +1,5 @@
 #include "compiler.h"
+#include <stdlib.h>
 
 bool datatype_is_struct_or_union_for_name(const char *name) {
   return S_EQ(name, "struct") || S_EQ(name, "union");
@@ -62,4 +63,29 @@ struct datatype datatype_for_numeric() {
   dtype.type_str = "int";
   dtype.size = DATA_SIZE_DWORD;
   return dtype;
+}
+
+struct datatype *datatype_thats_a_pointer(struct datatype *d1,
+                                          struct datatype *d2) {
+  if (d1->flags & DATATYPE_FLAG_IS_POINTER) {
+    return d1;
+  }
+
+  if (d2->flags & DATATYPE_FLAG_IS_POINTER) {
+    return d2;
+  }
+
+  return NULL;
+}
+
+struct datatype *datatype_pointer_reduce(struct datatype *dtype, int by) {
+  struct datatype *new_datatype = calloc(1, sizeof(struct datatype));
+  memcpy(new_datatype, dtype, sizeof(struct datatype));
+  new_datatype->pointer_depth -= by;
+  if (new_datatype->pointer_depth <= 0) {
+    new_datatype->flags &= ~DATATYPE_FLAG_IS_POINTER;
+    new_datatype->pointer_depth = 0;
+  }
+
+  return new_datatype;
 }

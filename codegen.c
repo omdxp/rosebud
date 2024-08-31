@@ -1038,7 +1038,20 @@ void codegen_generate_exp_node_for_arithmetic(struct node *node,
     asm_datatype_back(&left_dtype);
     asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
                      "result_value");
-#warning "pointer stuff"
+
+    struct datatype *pointer_dtype =
+        datatype_thats_a_pointer(&left_dtype, &right_dtype);
+    if (pointer_dtype && datatype_size(datatype_pointer_reduce(
+                             pointer_dtype, 1)) > DATA_SIZE_BYTE) {
+      const char *reg = "ecx";
+      if (pointer_dtype == &right_dtype) {
+        reg = "eax";
+      }
+
+      asm_push("imul %s, %d", reg,
+               datatype_size(datatype_pointer_reduce(pointer_dtype, 1)));
+    }
+
     codegen_gen_math_for_value("eax", "ecx", op_flags,
                                last_dtype.flags & DATATYPE_FLAG_IS_SIGNED);
   }
