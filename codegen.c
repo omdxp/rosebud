@@ -8,6 +8,7 @@
 
 static struct compile_process *current_process = NULL;
 static struct node *current_function = NULL;
+static bool add_tab = false;
 
 enum {
   CODEGEN_ENTITY_RULE_IS_STRUCT_OR_UNION_NO_POINTER = 0b00000001,
@@ -143,6 +144,12 @@ int codegen_label_count() {
 void asm_push_args(const char *ins, va_list args) {
   va_list args2;
   va_copy(args2, args);
+  if (add_tab) {
+    fprintf(stdout, "\t");
+    if (current_process->ofile) {
+      fprintf(current_process->ofile, "\t");
+    }
+  }
   vfprintf(stdout, ins, args);
   fprintf(stdout, "\n");
   if (current_process->ofile) {
@@ -247,6 +254,14 @@ void asm_pop_ebp() {
   asm_push_ins_pop("ebp", STACK_FRAME_ELEMENT_TYPE_SAVED_BASE_POINTER,
                    "function_entry_saved_ebp");
 }
+
+void codegen_stack_add_no_compile_time_stack_frame_restore(size_t stack_size) {
+  if (stack_size != 0) {
+    asm_push("add esp, %lld", stack_size);
+  }
+}
+
+void asm_pop_ebp_no_stack_frame_restore() { asm_push("pop ebp"); }
 
 void codegen_stack_sub_with_name(size_t stack_size, const char *name) {
   if (stack_size != 0) {
@@ -1557,6 +1572,36 @@ void codegen_generate_struct_push(struct resolver_entity *entity,
       RESPONSE_SET(.flags = RESPONSE_FLAG_PUSHED_STRUCT));
 }
 
+void codegen_generate_return_statement_exp(struct node *node,
+                                           struct history *history) {
+  codegen_response_expect();
+  codegen_generate_expressionable(node->stmt.return_stmt.exp,
+                                  history_begin(IS_STATEMENT_RETURN));
+  struct datatype dtype;
+  assert(asm_datatype_back(&dtype));
+  if (datatype_is_struct_or_union_no_pointer(&dtype)) {
+    asm_push("mov edx, [ebp+8]");
+    codegen_generate_mov_struct(&dtype, "edx", 0);
+    asm_push("mov eax, [ebp+8]");
+    return;
+  }
+
+  asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                   "result_value");
+}
+
+void codegen_generate_return_statement(struct node *node,
+                                       struct history *history) {
+  if (node->stmt.return_stmt.exp) {
+    codegen_generate_return_statement_exp(node, history);
+  }
+
+  codegen_stack_add_no_compile_time_stack_frame_restore(
+      C_ALIGN(function_node_stack_size(node->binded.function)));
+  asm_pop_ebp_no_stack_frame_restore();
+  asm_push("ret");
+}
+
 void codegen_generate_statement(struct node *node, struct history *history) {
   switch (node->type) {
   case NODE_TYPE_VARIABLE:
@@ -1565,6 +1610,14 @@ void codegen_generate_statement(struct node *node, struct history *history) {
 
   case NODE_TYPE_EXPRESSION:
     codegen_generate_exp_node(node, history_begin(history->flags));
+    break;
+
+  case NODE_TYPE_UNARY:
+    codegen_generate_unary_node(node, history_begin(history->flags));
+    break;
+
+  case NODE_TYPE_STATEMENT_RETURN:
+    codegen_generate_return_statement(node, history);
     break;
   }
 
@@ -1597,6 +1650,7 @@ void codegen_generate_function_with_body(struct node *node) {
   asm_push("global %s", node->func.name);
   asm_push("; %s function", node->func.name);
   asm_push("%s:", node->func.name);
+  add_tab = true;
 
   asm_push_ebp();
   asm_push("mov ebp, esp");
@@ -1611,6 +1665,7 @@ void codegen_generate_function_with_body(struct node *node) {
   asm_pop_ebp();
   stackframe_assert_empty(current_function);
   asm_push("ret");
+  add_tab = false;
 }
 
 void codegen_generate_function(struct node *node) {

@@ -1,13 +1,18 @@
-struct person {
+struct abc {
   int a;
   int b;
+  int c;
 };
 
+struct abc get_abc() {
+  struct abc abc;
+  abc.c = 2;
+  return abc;
+}
+
+struct abc x;
+
 int main() {
-  int *p;
-  int b;
-  b = 50;
-  p = &b;
-  int c;
-  c = *p;
+  x = get_abc();
+  return x.c;
 }
