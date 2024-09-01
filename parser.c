@@ -309,8 +309,9 @@ void parser_reorder_expression(struct node **node_out) {
     }
   }
 
-  if ((is_array_node(node->exp.left) || is_node_assignment(node->exp.right)) ||
-      ((node_is_expression(node->exp.left, "()")) &&
+  if ((is_array_node(node->exp.left) && is_node_assignment(node->exp.right)) ||
+      ((node_is_expression(node->exp.left, "()") ||
+        node_is_expression(node->exp.left, "[]")) &&
        node_is_expression(node->exp.right, ","))) {
     parser_node_move_right_left_to_left(node);
   }
