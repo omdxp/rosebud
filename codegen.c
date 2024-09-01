@@ -794,6 +794,11 @@ void codegen_generate_entity_access_for_variable_or_general(
       &(struct stack_frame_data){.dtype = entity->dtype});
 }
 
+void codegen_generate_entity_access_for_unsupported(
+    struct resolver_result *result, struct resolver_entity *entity) {
+  codegen_generate_expressionable(entity->node, history_begin(0));
+}
+
 void codegen_generate_entity_access_for_entity_assignment_left_operand(
     struct resolver_result *result, struct resolver_entity *entity,
     struct history *history) {
@@ -820,7 +825,7 @@ void codegen_generate_entity_access_for_entity_assignment_left_operand(
     break;
 
   case RESOLVER_ENTITY_TYPE_UNSUPPORTED:
-#warning "not implemented"
+    codegen_generate_entity_access_for_unsupported(result, entity);
     break;
 
   case RESOLVER_ENTITY_TYPE_CAST:
@@ -983,7 +988,7 @@ void codegen_generate_entity_access_for_entity(struct resolver_result *result,
     break;
 
   case RESOLVER_ENTITY_TYPE_UNSUPPORTED:
-#warning "not implemented"
+    codegen_generate_entity_access_for_unsupported(result, entity);
     break;
 
   case RESOLVER_ENTITY_TYPE_CAST:
