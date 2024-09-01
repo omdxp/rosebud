@@ -1057,6 +1057,8 @@ bool is_parentheses_node(struct node *node);
 bool is_access_node_with_op(struct node *node, const char *op);
 bool is_argument_operator(const char *op);
 bool is_argument_node(struct node *node);
+bool is_parentheses(const char *op);
+bool unary_operand_compatible(struct token *token);
 void datatype_decrement_pointer(struct datatype *dtype);
 
 size_t datatype_size_for_array_access(struct datatype *dtype);
