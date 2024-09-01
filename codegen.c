@@ -119,6 +119,7 @@ void codegen_generate_body(struct node *node, struct history *history);
 
 void codegen_generate_exp_node(struct node *node, struct history *history);
 const char *codegen_sub_register(const char *original_register, size_t size);
+int codegen_remove_uninheritable_flags(int flags);
 
 void codegen_new_scope(int flags) {
   resolver_default_new_scope(current_process->resolver, flags);
@@ -801,6 +802,13 @@ void codegen_generate_string(struct node *node, struct history *history) {
       &(struct stack_frame_data){.dtype = datatype_for_string()});
 }
 
+void codegen_generate_exp_paren_node(struct node *node,
+                                     struct history *history) {
+  codegen_generate_expressionable(
+      node->paren.exp, history_down(history, codegen_remove_uninheritable_flags(
+                                                 history->flags)));
+}
+
 void codegen_generate_expressionable(struct node *node,
                                      struct history *history) {
   bool is_root = codegen_is_exp_root(history);
@@ -827,6 +835,9 @@ void codegen_generate_expressionable(struct node *node,
 
   case NODE_TYPE_STRING:
     codegen_generate_string(node, history);
+
+  case NODE_TYPE_EXPRESSION_PARENTHESIS:
+    codegen_generate_exp_paren_node(node, history);
     break;
   }
 }
