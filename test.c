@@ -1,6 +1,3 @@
 int printf(const char *s);
 
-int main() {
-  int x;
-  x = (5);
-}
+int main() { int x = 1 == 1 ? 1 : 0; }

@@ -809,6 +809,34 @@ void codegen_generate_exp_paren_node(struct node *node,
                                                  history->flags)));
 }
 
+void codegen_generate_tenary_node(struct node *node, struct history *history) {
+  int true_label_id = codegen_label_count();
+  int false_label_id = codegen_label_count();
+  int end_label_id = codegen_label_count();
+
+  struct datatype last_dtype;
+  assert(asm_datatype_back(&last_dtype));
+
+  asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                   "result_value");
+  asm_push("cmp eax, 0");
+  asm_push("je .tenary_false_%d", false_label_id);
+  asm_push(".tenary_true_%d:", true_label_id);
+
+  codegen_generate_expressionable(node->tenary.true_node,
+                                  history_down(history, 0));
+  asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                             "result_value");
+  asm_push("jmp .tenary_end_%d", end_label_id);
+
+  asm_push(".tenary_false_%d:", false_label_id);
+  codegen_generate_expressionable(node->tenary.false_node,
+                                  history_down(history, 0));
+  asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                             "result_value");
+  asm_push(".tenary_end_%d:", end_label_id);
+}
+
 void codegen_generate_expressionable(struct node *node,
                                      struct history *history) {
   bool is_root = codegen_is_exp_root(history);
@@ -838,6 +866,10 @@ void codegen_generate_expressionable(struct node *node,
 
   case NODE_TYPE_EXPRESSION_PARENTHESIS:
     codegen_generate_exp_paren_node(node, history);
+    break;
+
+  case NODE_TYPE_TENARY:
+    codegen_generate_tenary_node(node, history);
     break;
   }
 }
