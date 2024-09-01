@@ -172,6 +172,15 @@ struct string_table_element {
 };
 
 struct code_generator {
+  struct generator_switch_stmt {
+    struct generator_switch_stmt_entity {
+      int id;
+    } current;
+
+    // vector of generator_switch_stmt_entity
+    struct vector *switches;
+  } _switch;
+
   // vector of struct string_table_element*
   struct vector *string_table;
 
@@ -1080,6 +1089,7 @@ void make_break_node();
 void make_label_node(struct node *name_node);
 void make_goto_node(struct node *label_node);
 void make_case_node(struct node *exp_node);
+void make_default_node();
 void make_tenary_node(struct node *true_node, struct node *false_node);
 void make_cast_node(struct datatype *type, struct node *exp_node);
 void make_unary_node(const char *op, struct node *operand_node);
