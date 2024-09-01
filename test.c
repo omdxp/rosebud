@@ -4,7 +4,7 @@ struct person {
 };
 
 int main() {
-  struct person p;
-  struct person p1;
-  p1 = p;
+  int *p;
+  int b;
+  p = &b;
 }
