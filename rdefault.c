@@ -185,7 +185,7 @@ struct resolver_entity *resolver_default_merge_entities(
     struct resolver_entity *left_entity, struct resolver_entity *right_entity) {
   int new_pos = left_entity->offset_from_bp + right_entity->offset_from_bp;
   return resolver_make_entity(
-      process, result, &right_entity->dtype, right_entity->node,
+      process, result, &right_entity->dtype, left_entity->node,
       &(struct resolver_entity){.type = right_entity->type,
                                 .flags = left_entity->flags,
                                 .offset_from_bp = new_pos,
