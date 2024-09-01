@@ -1,6 +1,7 @@
-int array[10];
+int x, y;
 
 int main() {
-  array[0] = 1;
-  array[1] = 2;
+  int a, b;
+  x = 10;
+  b = 20;
 }

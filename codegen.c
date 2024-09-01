@@ -602,10 +602,24 @@ void codegen_generate_union(struct node *node) {
   }
 }
 
+void codegen_generate_global_variable_list(struct node *node) {
+  assert(node->type == NODE_TYPE_VARIABLE_LIST);
+  vector_set_peek_pointer(node->var_list.list, 0);
+  struct node *var_node = vector_peek_ptr(node->var_list.list);
+  while (var_node) {
+    codegen_generate_global_variable(var_node);
+    var_node = vector_peek_ptr(node->var_list.list);
+  }
+}
+
 void codegen_generate_data_section_part(struct node *node) {
   switch (node->type) {
   case NODE_TYPE_VARIABLE:
     codegen_generate_global_variable(node);
+    break;
+
+  case NODE_TYPE_VARIABLE_LIST:
+    codegen_generate_global_variable_list(node);
     break;
 
   case NODE_TYPE_STRUCT:
@@ -2018,10 +2032,24 @@ void codegen_generate_label(struct node *node) {
   asm_push("label_%s:", node->label.name->sval);
 }
 
+void codegen_generate_scope_variable_list(struct node *node) {
+  assert(node->type == NODE_TYPE_VARIABLE_LIST);
+  vector_set_peek_pointer(node->var_list.list, 0);
+  struct node *var_node = vector_peek_ptr(node->var_list.list);
+  while (var_node) {
+    codegen_generate_scope_variable(var_node);
+    var_node = vector_peek_ptr(node->var_list.list);
+  }
+}
+
 void codegen_generate_statement(struct node *node, struct history *history) {
   switch (node->type) {
   case NODE_TYPE_VARIABLE:
     codegen_generate_scope_variable(node);
+    break;
+
+  case NODE_TYPE_VARIABLE_LIST:
+    codegen_generate_scope_variable_list(node);
     break;
 
   case NODE_TYPE_EXPRESSION:
