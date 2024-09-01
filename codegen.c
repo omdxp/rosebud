@@ -788,6 +788,19 @@ void codegen_generate_unary_node(struct node *node, struct history *history) {
   codegen_generate_normal_unary(node, history);
 }
 
+void codegen_gen_mov_for_value(const char *reg, const char *value,
+                               const char *datatype, int flags) {
+  asm_push("mov %s, %s", reg, value);
+}
+
+void codegen_generate_string(struct node *node, struct history *history) {
+  const char *label = codegen_register_string(node->sval);
+  codegen_gen_mov_for_value("eax", label, "dword", history->flags);
+  asm_push_ins_push_with_data(
+      "eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE, "result_value", 0,
+      &(struct stack_frame_data){.dtype = datatype_for_string()});
+}
+
 void codegen_generate_expressionable(struct node *node,
                                      struct history *history) {
   bool is_root = codegen_is_exp_root(history);
@@ -810,6 +823,10 @@ void codegen_generate_expressionable(struct node *node,
 
   case NODE_TYPE_UNARY:
     codegen_generate_unary_node(node, history);
+    break;
+
+  case NODE_TYPE_STRING:
+    codegen_generate_string(node, history);
     break;
   }
 }

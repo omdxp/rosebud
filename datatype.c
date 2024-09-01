@@ -65,6 +65,16 @@ struct datatype datatype_for_numeric() {
   return dtype;
 }
 
+struct datatype datatype_for_string() {
+  struct datatype dtype = {};
+  dtype.type = DATA_TYPE_INT;
+  dtype.type_str = "char";
+  dtype.flags |= DATATYPE_FLAG_IS_POINTER | DATATYPE_FLAG_IS_LITERAL;
+  dtype.pointer_depth = 1;
+  dtype.size = DATA_SIZE_DWORD;
+  return dtype;
+}
+
 struct datatype *datatype_thats_a_pointer(struct datatype *d1,
                                           struct datatype *d2) {
   if (d1->flags & DATATYPE_FLAG_IS_POINTER) {
