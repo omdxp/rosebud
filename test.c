@@ -6,5 +6,8 @@ struct person {
 int main() {
   int *p;
   int b;
+  b = 50;
   p = &b;
+  int c;
+  c = *p;
 }
