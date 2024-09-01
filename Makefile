@@ -65,5 +65,5 @@ all: ${OBJECTS}
 	gcc ./helpers/vector.c ${INCLUDES} -o ./build/helpers/vector.o -g -c
 
 clean:
-	rm -rf ./main
+	rm -rf ./main ./test ./.o
 	rm -rf ${OBJECTS}
