@@ -1637,6 +1637,22 @@ void _codegen_generate_if_statement(struct node *node, int end_label_id) {
   }
 }
 
+void codegen_generate_while_statement(struct node *node) {
+  codegen_begin_entry_exit_point();
+  int while_start_id = codegen_label_count();
+  int while_end_id = codegen_label_count();
+  asm_push(".while_start_%d:", while_start_id);
+  codegen_generate_expressionable(node->stmt.while_stmt.cond, history_begin(0));
+  asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                   "result_value");
+  asm_push("cmp eax, 0");
+  asm_push("je .while_end_%d", while_end_id);
+  codegen_generate_body(node->stmt.while_stmt.body, history_begin(0));
+  asm_push("jmp .while_start_%d", while_start_id);
+  asm_push(".while_end_%d:", while_end_id);
+  codegen_end_entry_exit_point();
+}
+
 void codegen_generate_if_statement(struct node *node) {
   int end_label_id = codegen_label_count();
   _codegen_generate_if_statement(node, end_label_id);
@@ -1663,6 +1679,10 @@ void codegen_generate_statement(struct node *node, struct history *history) {
 
   case NODE_TYPE_STATEMENT_IF:
     codegen_generate_if_statement(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_WHILE:
+    codegen_generate_while_statement(node);
     break;
   }
 
