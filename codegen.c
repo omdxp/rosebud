@@ -1697,11 +1697,18 @@ void codegen_generate_if_statement(struct node *node) {
 
 void codegen_generate_for_statement(struct node *node) {
   struct for_stmt *for_stmt = &node->stmt.for_stmt;
-  codegen_begin_entry_exit_point();
   int for_start_id = codegen_label_count();
   int for_end_id = codegen_label_count();
   if (for_stmt->init) {
     codegen_generate_expressionable(for_stmt->init, history_begin(0));
+    asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                               "result_value");
+  }
+
+  asm_push("jmp .for_start_%d", for_start_id);
+  codegen_begin_entry_exit_point();
+  if (for_stmt->inc) {
+    codegen_generate_expressionable(for_stmt->inc, history_begin(0));
     asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
                                "result_value");
   }
@@ -1732,6 +1739,10 @@ void codegen_generate_for_statement(struct node *node) {
 }
 
 void codegen_generate_break_statement() { codegen_goto_exit_point(); }
+
+void codegen_generate_continue_statement(struct node *node) {
+  codegen_goto_entry_point(node);
+}
 
 void codegen_generate_statement(struct node *node, struct history *history) {
   switch (node->type) {
@@ -1769,6 +1780,10 @@ void codegen_generate_statement(struct node *node, struct history *history) {
 
   case NODE_TYPE_STATEMENT_BREAK:
     codegen_generate_break_statement();
+    break;
+
+  case NODE_TYPE_STATEMENT_CONTINUE:
+    codegen_generate_continue_statement(node);
     break;
   }
 
