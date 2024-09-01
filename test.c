@@ -1,11 +1,6 @@
-union abc {
-  int x;
-  int y;
-};
-
-union abc a;
+int array[10];
 
 int main() {
-  a.x = 20;
-  return a.y;
+  array[0] = 1;
+  array[1] = 2;
 }
