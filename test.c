@@ -1,4 +1,11 @@
+union abc {
+  int x;
+  int y;
+};
+
+union abc a;
+
 int main() {
-  int *x;
-  *x = 50;
+  a.x = 20;
+  return a.y;
 }
