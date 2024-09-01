@@ -1,3 +1,6 @@
 int printf(const char *s);
 
-int main() { int x = 1 == 1 ? 1 : 0; }
+int main() {
+  int x = 50;
+  char c = (char)x;
+}

@@ -837,6 +837,20 @@ void codegen_generate_tenary_node(struct node *node, struct history *history) {
   asm_push(".tenary_end_%d:", end_label_id);
 }
 
+void codegen_generate_cast_node(struct node *node, struct history *history) {
+  if (!codegen_resolve_node_for_value(node, history)) {
+    codegen_generate_expressionable(node->cast.exp, history);
+  }
+
+  asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                   "result_value");
+  codegen_reduce_register("eax", datatype_element_size(&node->cast.dtype),
+                          node->cast.dtype.flags & DATATYPE_FLAG_IS_SIGNED);
+  asm_push_ins_push_with_data(
+      "eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE, "result_value", 0,
+      &(struct stack_frame_data){.dtype = node->cast.dtype});
+}
+
 void codegen_generate_expressionable(struct node *node,
                                      struct history *history) {
   bool is_root = codegen_is_exp_root(history);
@@ -870,6 +884,10 @@ void codegen_generate_expressionable(struct node *node,
 
   case NODE_TYPE_TENARY:
     codegen_generate_tenary_node(node, history);
+    break;
+
+  case NODE_TYPE_CAST:
+    codegen_generate_cast_node(node, history);
     break;
   }
 }
@@ -1053,6 +1071,11 @@ void codegen_generate_entity_access_for_unary_indirection_for_assignment_left_op
                                STACK_FRAME_ELEMENT_FLAG_IS_PUSHED_ADDRESS);
 }
 
+void codegen_generate_entity_access_for_cast(struct resolver_result *result,
+                                             struct resolver_entity *entity) {
+  asm_push("; cast");
+}
+
 void codegen_generate_entity_access_for_entity_assignment_left_operand(
     struct resolver_result *result, struct resolver_entity *entity,
     struct history *history) {
@@ -1084,7 +1107,7 @@ void codegen_generate_entity_access_for_entity_assignment_left_operand(
     break;
 
   case RESOLVER_ENTITY_TYPE_CAST:
-#warning "not implemented"
+    codegen_generate_entity_access_for_cast(result, entity);
     break;
 
   default:
@@ -1275,7 +1298,7 @@ void codegen_generate_entity_access_for_entity(struct resolver_result *result,
     break;
 
   case RESOLVER_ENTITY_TYPE_CAST:
-#warning "not implemented"
+    codegen_generate_entity_access_for_cast(result, entity);
     break;
 
   default:
