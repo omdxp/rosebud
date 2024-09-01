@@ -251,6 +251,27 @@ int asm_push_ins_pop(const char *fmt, int expecting_stack_entity_type,
   return flags;
 }
 
+int asm_push_ins_pop_or_ignore(const char *fmt, int expecting_stack_entity_type,
+                               const char *expecting_stack_entity_name, ...) {
+  if (!stackframe_back_expect(current_function, expecting_stack_entity_type,
+                              expecting_stack_entity_name)) {
+    return STACK_FRAME_ELEMENT_FLAG_ELEMENT_NOT_FOUND;
+  }
+
+  char tmp_buf[200];
+  sprintf(tmp_buf, "pop %s", fmt);
+  va_list args;
+  va_start(args, expecting_stack_entity_name);
+  asm_push_args(tmp_buf, args);
+  va_end(args);
+
+  struct stack_frame_element *element = stackframe_back(current_function);
+  int flags = element->flags;
+  stackframe_pop_expecting(current_function, expecting_stack_entity_type,
+                           expecting_stack_entity_name);
+  return flags;
+}
+
 void asm_pop_ebp() {
   asm_push_ins_pop("ebp", STACK_FRAME_ELEMENT_TYPE_SAVED_BASE_POINTER,
                    "function_entry_saved_ebp");
@@ -1674,6 +1695,42 @@ void codegen_generate_if_statement(struct node *node) {
   asm_push(".if_end_%d:", end_label_id);
 }
 
+void codegen_generate_for_statement(struct node *node) {
+  struct for_stmt *for_stmt = &node->stmt.for_stmt;
+  codegen_begin_entry_exit_point();
+  int for_start_id = codegen_label_count();
+  int for_end_id = codegen_label_count();
+  if (for_stmt->init) {
+    codegen_generate_expressionable(for_stmt->init, history_begin(0));
+    asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                               "result_value");
+  }
+
+  asm_push(".for_start_%d:", for_start_id);
+  if (for_stmt->cond) {
+    codegen_generate_expressionable(for_stmt->cond, history_begin(0));
+    asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                               "result_value");
+    asm_push("cmp eax, 0");
+    asm_push("je .for_end_%d", for_end_id);
+  }
+
+  if (for_stmt->body) {
+    codegen_generate_body(for_stmt->body, history_begin(IS_ALONE_STATEMENT));
+  }
+
+  if (for_stmt->inc) {
+    codegen_generate_expressionable(for_stmt->inc, history_begin(0));
+    asm_push_ins_pop_or_ignore("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
+                               "result_value");
+  }
+
+  asm_push("jmp .for_start_%d", for_start_id);
+  asm_push(".for_end_%d:", for_end_id);
+
+  codegen_end_entry_exit_point();
+}
+
 void codegen_generate_statement(struct node *node, struct history *history) {
   switch (node->type) {
   case NODE_TYPE_VARIABLE:
@@ -1702,6 +1759,10 @@ void codegen_generate_statement(struct node *node, struct history *history) {
 
   case NODE_TYPE_STATEMENT_DO_WHILE:
     codegen_generate_do_while_statement(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_FOR:
+    codegen_generate_for_statement(node);
     break;
   }
 
