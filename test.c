@@ -1,3 +1,10 @@
-int test(int a) {}
+struct person {
+  int a;
+  int b;
+};
 
-int main() { test(2024); }
+int main() {
+  struct person p;
+  struct person p1;
+  p1 = p;
+}

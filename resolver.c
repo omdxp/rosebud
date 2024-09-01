@@ -364,6 +364,7 @@ struct resolver_entity *resolver_create_new_entity_for_var_node_custom_scope(
   assert(entity->scope);
   entity->name = var_node->var.name;
   entity->dtype = var_node->var.type;
+  entity->var_data.dtype = var_node->var.type;
   entity->node = var_node;
   entity->offset_from_bp = offset;
   return entity;
