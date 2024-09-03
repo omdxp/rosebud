@@ -11,6 +11,7 @@
   (size % C_STACK_ALIGNMENT)                                                   \
       ? size + (C_STACK_ALIGNMENT - (size % C_STACK_ALIGNMENT))                \
       : size
+#define PATH_MAX 4096
 
 struct pos {
   int line;
@@ -213,8 +214,86 @@ struct symbol {
   void *data;
 };
 
-struct resolver_process;
+enum {
+  PREPROCESSOR_DEFINITION_STANDARD,
+  PREPROCESSOR_DEFINITION_MACRO_FUNCTION,
+  PREPROCESSOR_DEFINITION_NATIVE_CALLBACK,
+  PREPROCESSOR_DEFINITION_TYPEDEF,
+};
 
+enum { PREPROCESS_ALL_OK };
+
+struct compile_process;
+struct preprocessor;
+struct preprocessor_definition;
+struct preprocessor_included_file;
+
+struct preprocessor_function_arg {
+  // vector of struct token*
+  struct vector *tokens;
+};
+
+struct preprocessor_function_args {
+  // vector of struct preprocessor_function_arg
+  struct vector *args;
+};
+
+typedef int (*PREPROCESSOR_DEFINITION_NATIVE_CALL_EVALUATE)(
+    struct preprocessor_definition *definition,
+    struct preprocessor_function_args *args);
+typedef struct vector *(*PREPROCESSOR_DEFINITION_NATIVE_CALL_VALUE)(
+    struct preprocessor_definition *definition,
+    struct preprocessor_function_args *args);
+typedef void (*PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION)(
+    struct preprocessor *preprocessor,
+    struct preprocessor_included_file *included_file);
+
+struct preprocessor_definition {
+  int type; // .i.e standard or function like macro
+
+  // name of the macro
+  const char *name;
+
+  union {
+    struct standard_preprocessor_definition {
+      // vector of struct token*
+      struct vector *value;
+
+      // vector of const char* (.i.e. arguments like ABC(a, b, c))
+      struct vector *args;
+    } standard;
+
+    struct typedef_preprocessor_definition {
+      struct vector *value;
+    } _typedef;
+
+    struct native_callback_preprocessor_definition {
+      PREPROCESSOR_DEFINITION_NATIVE_CALL_EVALUATE evaluate;
+      PREPROCESSOR_DEFINITION_NATIVE_CALL_VALUE value;
+    } native;
+  };
+};
+
+struct preprocessor_included_file {
+  char filename[PATH_MAX];
+};
+
+struct preprocessor {
+  // vector of struct_definition*
+  struct vector *defs;
+
+  // vector of struct preprocessor_node*
+  struct vector *exp_vec;
+
+  struct expressionable *expressionable;
+
+  struct compile_process *compiler;
+
+  // vector of struct preprocessor_included_file*
+  struct vector *includes;
+};
+
+struct resolver_process;
 struct compile_process {
   // The flags in regard on how this file should be compiled
   int flags;
@@ -224,6 +303,9 @@ struct compile_process {
     FILE *fp;
     const char *abs_path;
   } cfile;
+
+  // untampered vector of tokens from lexical analysis for preprocessing
+  struct vector *token_vec_original;
 
   // The vector of tokens from lexical analysis
   struct vector *token_vec;
@@ -250,6 +332,12 @@ struct compile_process {
 
   // pointer to resolver process
   struct resolver_process *resolver;
+
+  // vector of const char* (include directories)
+  struct vector *include_dirs;
+
+  // pointer to preprocessor
+  struct preprocessor *preprocessor;
 };
 
 enum { PARSE_ALL_OK, PARSE_GENERAL_ERROR };
@@ -1017,9 +1105,9 @@ enum {
 };
 
 int compile_file(const char *filename, const char *out_filename, int flags);
-struct compile_process *compile_process_create(const char *filename,
-                                               const char *filename_out,
-                                               int flags);
+struct compile_process *
+compile_process_create(const char *filename, const char *filename_out,
+                       int flags, struct compile_process *parent_process);
 
 char compile_process_next_char(struct lex_process *lex_process);
 char compile_process_peek_char(struct lex_process *lex_process);
@@ -1474,5 +1562,8 @@ int expressionable_parse_single_with_flags(
     struct expressionable *expressionable, int flags);
 int expressionable_parse_single(struct expressionable *expressionable);
 void expressionable_parse(struct expressionable *expressionable);
+
+struct preprocessor *preprocessor_create(struct compile_process *compiler);
+int preprocessor_run(struct compile_process *compiler);
 
 #endif

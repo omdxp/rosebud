@@ -30,7 +30,7 @@ enum {
   PREPROCESSOR_TENARY_NODE,
 };
 
-struct preprocess_node {
+struct preprocessor_node {
   int type;
   struct preprocessor_const_val {
     union {
@@ -75,3 +75,141 @@ struct preprocess_node {
 
   const char *sval;
 };
+
+void preprocessor_exec_error(struct compile_process *compiler,
+                             const char *message) {
+  compiler_error(compiler, "#error %s", message);
+}
+
+void preprocessor_exec_warning(struct compile_process *compiler,
+                               const char *message) {
+  compiler_warning(compiler, "#warning %s", message);
+}
+
+struct preprocessor_included_file *
+preprocessor_add_included_file(struct preprocessor *preprocessor,
+                               const char *filename) {
+  struct preprocessor_included_file *included_file =
+      malloc(sizeof(struct preprocessor_included_file));
+  strncpy(included_file->filename, filename, sizeof(included_file->filename));
+  vector_push(preprocessor->includes, &included_file);
+  return included_file;
+}
+
+void preprocessor_create_static_include(
+    struct preprocessor *preprocessor, const char *filename,
+    PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION creation_handler) {
+  struct preprocessor_included_file *included_file =
+      preprocessor_add_included_file(preprocessor, filename);
+  creation_handler(preprocessor, included_file);
+}
+
+bool preprocessor_is_keyword(const char *type) { return S_EQ(type, "defined"); }
+
+struct vector *preprocessor_build_value_vector_for_integer(int value) {
+  struct vector *token_vec = vector_create(sizeof(struct token));
+  struct token t1 = {};
+  t1.type = TOKEN_TYPE_NUMBER;
+  t1.llnum = value;
+  vector_push(token_vec, &t1);
+  return token_vec;
+}
+
+void preprocessor_token_vec_push_keyword_and_identifier(
+    struct vector *token_vec, const char *keyword, const char *identifier) {
+  struct token t1 = {};
+  t1.type = TOKEN_TYPE_KEYWORD;
+  t1.sval = keyword;
+  vector_push(token_vec, &t1);
+
+  struct token t2 = {};
+  t2.type = TOKEN_TYPE_IDENTIFIER;
+  t2.sval = identifier;
+  vector_push(token_vec, &t2);
+}
+
+struct preprocessor_node *
+preprocessor_node_create(struct preprocessor_node *node) {
+  struct preprocessor_node *res = malloc(sizeof(struct preprocessor_node));
+  memcpy(res, node, sizeof(struct preprocessor_node));
+  return res;
+}
+
+int preprocessor_definition_argument_exists(struct preprocessor_definition *def,
+                                            const char *arg) {
+  vector_set_peek_pointer(def->standard.args, 0);
+  int i = 0;
+  const char *current = vector_peek(def->standard.args);
+  while (current) {
+    if (S_EQ(current, arg)) {
+      return i;
+    }
+
+    i++;
+    current = vector_peek(def->standard.args);
+  }
+
+  return -1;
+}
+
+struct preprocessor_function_arg *
+preprocessor_function_argument_at(struct preprocessor_function_args *args,
+                                  int index) {
+  return vector_at(args->args, index);
+}
+
+void preprocessor_token_push_to_function_arguments(
+    struct preprocessor_function_args *args, struct token *token) {
+  struct preprocessor_function_arg arg = {};
+  arg.tokens = vector_create(sizeof(struct token));
+  vector_push(arg.tokens, token);
+  vector_push(args->args, &arg);
+}
+
+void preprocessor_function_argument_push_to_vec(
+    struct preprocessor_function_arg *arg, struct vector *vec) {
+  vector_set_peek_pointer(arg->tokens, 0);
+  struct token *token = vector_peek(arg->tokens);
+  while (token) {
+    vector_push(vec, token);
+    token = vector_peek(arg->tokens);
+  }
+}
+
+void preprocessor_init(struct preprocessor *preprocessor) {
+  memset(preprocessor, 0, sizeof(struct preprocessor));
+  preprocessor->defs = vector_create(sizeof(struct preprocessor_definition *));
+  preprocessor->includes =
+      vector_create(sizeof(struct preprocessor_included_file *));
+#warning "create proprocessor default definitions"
+}
+
+struct preprocessor *preprocessor_create(struct compile_process *compiler) {
+  struct preprocessor *preprocessor = malloc(sizeof(struct preprocessor));
+  preprocessor_init(preprocessor);
+  preprocessor->compiler = compiler;
+  return preprocessor;
+}
+
+struct token *preprocessor_next_token(struct compile_process *compiler) {
+  return vector_peek(compiler->token_vec_original);
+}
+
+void preprocessor_handle_token(struct compile_process *compiler,
+                               struct token *token) {
+  switch (token->type) {
+    // handle all token types
+  }
+}
+
+int preprocessor_run(struct compile_process *compiler) {
+#warning "add source file as an included file"
+  vector_set_peek_pointer(compiler->token_vec_original, 0);
+  struct token *token = preprocessor_next_token(compiler);
+  while (token) {
+    preprocessor_handle_token(compiler, token);
+    token = preprocessor_next_token(compiler);
+  }
+
+  return PREPROCESS_ALL_OK;
+}

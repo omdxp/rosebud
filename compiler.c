@@ -28,7 +28,7 @@ void compiler_warning(struct compile_process *compiler, const char *msg, ...) {
 
 int compile_file(const char *filename, const char *out_filename, int flags) {
   struct compile_process *process =
-      compile_process_create(filename, out_filename, flags);
+      compile_process_create(filename, out_filename, flags, NULL);
   if (!process)
     return COMPILER_FAILED_WITH_ERRORS;
 
@@ -43,7 +43,12 @@ int compile_file(const char *filename, const char *out_filename, int flags) {
     return COMPILER_FAILED_WITH_ERRORS;
   }
 
-  process->token_vec = lex_process->token_vec;
+  process->token_vec_original = lex_process_tokens(lex_process);
+
+  // Perform preprocessing
+  if (preprocessor_run(process) != PREPROCESS_ALL_OK) {
+    return COMPILER_FAILED_WITH_ERRORS;
+  }
 
   // Perform parsing
   if (parse(process) != PARSE_ALL_OK) {
