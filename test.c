@@ -2,6 +2,9 @@ int printf(const char *s, ...);
 
 int main() {
   int x = 1;
-  x >>= 1;
-  printf("%d\n", x);
+  x++;
+  ++x;
+  x--;
+  --x;
+  printf("%d\n", ++x);
 }

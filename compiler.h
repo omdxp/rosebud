@@ -384,8 +384,13 @@ struct parsed_switch_case {
   int index;
 };
 
+enum {
+  UNARY_FLAG_IS_LEFT_OPERANDED_UNARY = 0b00000001,
+};
+
 struct node;
 struct unary {
+  int flags;
   // operator of the unary expression (i.e. !, ~, *, etc), even for multiple
   // pointer access only one operator is stored
   const char *op;
@@ -1058,6 +1063,7 @@ bool is_access_node_with_op(struct node *node, const char *op);
 bool is_argument_operator(const char *op);
 bool is_argument_node(struct node *node);
 bool is_parentheses(const char *op);
+bool is_left_operanded_unary_operator(const char *op);
 bool unary_operand_compatible(struct token *token);
 void datatype_decrement_pointer(struct datatype *dtype);
 
@@ -1095,7 +1101,7 @@ void make_case_node(struct node *exp_node);
 void make_default_node();
 void make_tenary_node(struct node *true_node, struct node *false_node);
 void make_cast_node(struct datatype *type, struct node *exp_node);
-void make_unary_node(const char *op, struct node *operand_node);
+void make_unary_node(const char *op, struct node *operand_node, int flags);
 
 struct node *node_pop();
 struct node *node_peek();

@@ -58,9 +58,11 @@ void make_exp_node(struct node *left_node, struct node *right_node,
                              .exp.op = op});
 }
 
-void make_unary_node(const char *op, struct node *operand_node) {
-  node_create(&(struct node){
-      .type = NODE_TYPE_UNARY, .unary.op = op, .unary.operand = operand_node});
+void make_unary_node(const char *op, struct node *operand_node, int flags) {
+  node_create(&(struct node){.type = NODE_TYPE_UNARY,
+                             .unary.op = op,
+                             .unary.operand = operand_node,
+                             .unary.flags = flags});
 }
 
 void make_exp_parentheses_node(struct node *exp_node) {
