@@ -1,10 +1,5 @@
 int printf(const char *s, ...);
 
-int main() {
-  int x = 1;
-  x++;
-  ++x;
-  x--;
-  --x;
-  printf("%d\n", ++x);
-}
+int sum(int x, int y) { return x + y; }
+
+int main() { printf("%d\n", sum(20, 30)); }

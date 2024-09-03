@@ -283,6 +283,14 @@ void asm_pop_ebp() {
                    "function_entry_saved_ebp");
 }
 
+void codegen_data_section_add(const char *data, ...) {
+  va_list args;
+  va_start(args, data);
+  char *new_data = malloc(256);
+  vsprintf(new_data, data, args);
+  vector_push(current_process->generator->custom_data_section, &new_data);
+}
+
 void codegen_stack_add_no_compile_time_stack_frame_restore(size_t stack_size) {
   if (stack_size != 0) {
     asm_push("add esp, %lld", stack_size);
@@ -364,6 +372,7 @@ struct code_generator *codegenerator_new(struct compile_process *process) {
   generator->responses = vector_create(sizeof(struct response *));
   generator->_switch.switches =
       vector_create(sizeof(struct generator_switch_stmt_entity));
+  generator->custom_data_section = vector_create(sizeof(const char *));
   return generator;
 }
 
@@ -686,7 +695,7 @@ bool codegen_is_exp_root(struct history *history) {
 }
 
 void codegen_reduce_register(const char *reg, size_t size, bool is_signed) {
-  if (size != DATA_SIZE_DWORD) {
+  if (size != DATA_SIZE_DWORD && size > 0) {
     const char *ins = "movsx";
     if (!is_signed) {
       ins = "movzx";
@@ -1381,9 +1390,11 @@ void codegen_generate_entity_access_for_function_call(
   vector_set_peek_pointer_end(entity->function_call_data.args);
 
   struct node *node = vector_peek_ptr(entity->function_call_data.args);
+  int function_call_label_id = codegen_label_count();
+  codegen_data_section_add("function_call_%d: dd 0", function_call_label_id);
   asm_push_ins_pop("ebx", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
                    "result_value");
-  asm_push("mov ecx, ebx");
+  asm_push("mov dword [function_call_%d], ebx", function_call_label_id);
   if (datatype_is_struct_or_union_no_pointer(&entity->dtype)) {
     asm_push("; subtract room for returned struct or union datatype");
     codegen_stack_sub_with_name(
@@ -1399,7 +1410,7 @@ void codegen_generate_entity_access_for_function_call(
     node = vector_peek_ptr(entity->function_call_data.args);
   }
 
-  asm_push("call ecx");
+  asm_push("call [function_call_%d]", function_call_label_id);
   size_t stack_size = entity->function_call_data.stack_size;
   if (datatype_is_struct_or_union_no_pointer(&entity->dtype)) {
     stack_size += DATA_SIZE_DWORD;
@@ -1541,7 +1552,15 @@ bool codegen_resolve_node_for_value(struct node *node,
 
   struct datatype dtype;
   assert(asm_datatype_back(&dtype));
-  if (datatype_is_struct_or_union_no_pointer(&dtype)) {
+  if (result->flags & RESOLVER_RESULT_FLAG_DOES_GET_ADDRESS) {
+    // do nothing
+  } else if (result->last_entity->type == RESOLVER_ENTITY_TYPE_FUNCTION_CALL &&
+             datatype_is_struct_or_union_no_pointer(
+                 &result->last_entity->dtype)) {
+    // do nothing
+  }
+
+  else if (datatype_is_struct_or_union_no_pointer(&dtype)) {
     codegen_generate_struct_push(result->last_entity, history, 0);
   } else if (!(dtype.flags & DATATYPE_FLAG_IS_POINTER)) {
     asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE,
@@ -2335,6 +2354,17 @@ void codegen_generate_rod() {
   codegen_write_strings();
 }
 
+void codegen_generate_data_section_add_ons() {
+  asm_push("section .data");
+  vector_set_peek_pointer(current_process->generator->custom_data_section, 0);
+  const char *str =
+      vector_peek_ptr(current_process->generator->custom_data_section);
+  while (str) {
+    asm_push(str);
+    str = vector_peek_ptr(current_process->generator->custom_data_section);
+  }
+}
+
 int codegen(struct compile_process *process) {
   current_process = process;
   scope_create_root(process);
@@ -2344,6 +2374,8 @@ int codegen(struct compile_process *process) {
   vector_set_peek_pointer(process->node_tree_vec, 0);
   codegen_generate_root();
   codegen_finish_scope();
+
+  codegen_generate_data_section_add_ons();
 
   // generate read only data section
   codegen_generate_rod();

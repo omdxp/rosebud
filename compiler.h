@@ -190,6 +190,9 @@ struct code_generator {
   // vector of struct codegen_exit_point*
   struct vector *exit_points;
 
+  // vector of const char*
+  struct vector *custom_data_section;
+
   // vector of struct response*
   struct vector *responses;
 };
