@@ -166,7 +166,8 @@ static bool is_single_operator(char op) {
 bool op_valid(const char *op) {
   return S_EQ(op, "+") || S_EQ(op, "-") || S_EQ(op, "*") || S_EQ(op, "/") ||
          S_EQ(op, "!") || S_EQ(op, "^") || S_EQ(op, "+=") || S_EQ(op, "-=") ||
-         S_EQ(op, "*=") || S_EQ(op, "/=") || S_EQ(op, ">>") || S_EQ(op, "<<") ||
+         S_EQ(op, "*=") || S_EQ(op, "/=") || S_EQ(op, ">>") ||
+         S_EQ(op, ">>=") || S_EQ(op, "<<") || S_EQ(op, "<<=") ||
          S_EQ(op, ">=") || S_EQ(op, "<=") || S_EQ(op, ">") || S_EQ(op, "<") ||
          S_EQ(op, "||") || S_EQ(op, "&&") || S_EQ(op, "|") || S_EQ(op, "&") ||
          S_EQ(op, "++") || S_EQ(op, "--") || S_EQ(op, "=") || S_EQ(op, "!=") ||
@@ -191,13 +192,18 @@ const char *read_op() {
   char op = nextc();
   struct buffer *buffer = buffer_create();
   buffer_write(buffer, op);
-
-  if (!op_treated_as_one(op)) {
-    op = peekc();
-    if (is_single_operator(op)) {
-      buffer_write(buffer, op);
-      nextc();
-      single_operator = false;
+  if (op == '*' && peekc() == '=') {
+    buffer_write(buffer, peekc());
+    nextc(); // skip =
+    single_operator = false;
+  } else if (!op_treated_as_one(op)) {
+    for (size_t i = 0; i < 2; i++) {
+      op = peekc();
+      if (is_single_operator(op)) {
+        buffer_write(buffer, op);
+        nextc();
+        single_operator = false;
+      }
     }
   }
 

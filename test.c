@@ -1,3 +1,7 @@
 int printf(const char *s, ...);
 
-int main() { printf("Hello, World! %d\n", 2024); }
+int main() {
+  int x = 1;
+  x >>= 1;
+  printf("%d\n", x);
+}

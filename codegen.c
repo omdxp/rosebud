@@ -1016,10 +1016,44 @@ const char *codegen_byte_word_or_dword_or_ddword(size_t size,
 void codegen_generate_assignment_instruction_for_operator(
     const char *mov_type_keyword, const char *address, const char *reg_to_use,
     const char *op, bool is_signed) {
+  assert(!S_EQ(reg_to_use, "ecx"));
   if (S_EQ(op, "=")) {
     asm_push("mov %s [%s], %s", mov_type_keyword, address, reg_to_use);
   } else if (S_EQ(op, "+=")) {
     asm_push("add %s [%s], %s", mov_type_keyword, address, reg_to_use);
+  } else if (S_EQ(op, "-=")) {
+    asm_push("sub %s [%s], %s", mov_type_keyword, address, reg_to_use);
+  } else if (S_EQ(op, "*=")) {
+    asm_push("mov ecx, %s", reg_to_use);
+    asm_push("mov eax, [%s]", address);
+    if (is_signed) {
+      asm_push("imul %s", reg_to_use);
+    } else {
+      asm_push("mul %s", reg_to_use);
+    }
+
+    asm_push("mov %s [%s], eax", mov_type_keyword, address);
+  } else if (S_EQ(op, "/=")) {
+    asm_push("mov ecx, eax");
+    asm_push("mov eax, [%s]", address);
+    asm_push("cdq");
+    if (is_signed) {
+      asm_push("idiv ecx");
+    } else {
+      asm_push("div ecx");
+    }
+
+    asm_push("mov %s [%s], %s", mov_type_keyword, address, reg_to_use);
+  } else if (S_EQ(op, "<<=")) {
+    asm_push("mov ecx, %s", reg_to_use);
+    asm_push("sal %s [%s], cl", mov_type_keyword, address);
+  } else if (S_EQ(op, ">>=")) {
+    asm_push("mov ecx, %s", reg_to_use);
+    if (is_signed) {
+      asm_push("sar %s [%s], cl", mov_type_keyword, address);
+    } else {
+      asm_push("shr %s [%s], cl", mov_type_keyword, address);
+    }
   }
 }
 
@@ -1620,7 +1654,11 @@ void codegen_gen_math_for_value(const char *reg, const char *value, int flags,
     asm_push("sal %s, %s", reg, value);
   } else if (flags & EXPRESSION_IS_BITSHIFT_RIGHT) {
     value = codegen_sub_register(value, DATA_SIZE_BYTE);
-    asm_push("sar %s, %s", reg, value);
+    if (is_signed) {
+      asm_push("sar %s, %s", reg, value);
+    } else {
+      asm_push("shr %s, %s", reg, value);
+    }
   } else if (flags & EXPRESSION_IS_BITWISE_AND) {
     asm_push("and %s, %s", reg, value);
   } else if (flags & EXPRESSION_IS_BITWISE_OR) {
