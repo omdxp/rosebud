@@ -1,6 +1,7 @@
 #include "compiler.h"
 #include "helpers/buffer.h"
 #include "helpers/vector.h"
+#include <assert.h>
 
 enum {
   TYPEDEF_TYPE_STANDARD,
@@ -679,6 +680,7 @@ int preprocessor_definition_evaluated_value(
   }
 
   compiler_error(def->preprocessor->compiler, "Cannot evaluate to number");
+  return 0;
 }
 
 bool preprocessor_is_next_macro_arguments(struct compile_process *compiler) {
@@ -862,11 +864,199 @@ int preprocessor_arithmetic(struct compile_process *compiler, long left,
   return res;
 }
 
+struct preprocessor_function_args *preprocessor_function_args_create() {
+  struct preprocessor_function_args *args =
+      malloc(sizeof(struct preprocessor_function_args));
+  args->args = vector_create(sizeof(struct preprocessor_function_arg));
+  return args;
+}
+
+bool preprocessor_exp_is_macro_function_call(struct preprocessor_node *node) {
+  return node->type == PREPROCESSOR_EXPRESSION_NODE &&
+         S_EQ(node->exp.op, "()") &&
+         node->exp.left->type == PREPROCESSOR_IDENTIFIER_NODE;
+}
+
+void preprocessor_number_push_to_function_arguments(
+    struct preprocessor_function_args *args, int64_t value) {
+  struct token t;
+  t.type = TOKEN_TYPE_NUMBER;
+  t.llnum = value;
+  preprocessor_token_push_to_function_arguments(args, &t);
+}
+
+void preprocessor_evaluate_function_call_arg(
+    struct compile_process *compiler, struct preprocessor_node *node,
+    struct preprocessor_function_args *args) {
+  if (node->type == PREPROCESSOR_EXPRESSION_NODE && S_EQ(node->exp.op, ",")) {
+    preprocessor_evaluate_function_call_arg(compiler, node->exp.left, args);
+    preprocessor_evaluate_function_call_arg(compiler, node->exp.right, args);
+    return;
+  } else if (node->type == PREPROCESSOR_PARENTHESES_NODE) {
+    preprocessor_evaluate_function_call_arg(compiler, node->paren_node.exp,
+                                            args);
+    return;
+  }
+
+  preprocessor_number_push_to_function_arguments(
+      args, preprocessor_evaluate(compiler, node));
+}
+
+void preprocessor_evaluate_function_call_args(
+    struct compile_process *compiler, struct preprocessor_node *node,
+    struct preprocessor_function_args *args) {
+  preprocessor_evaluate_function_call_arg(compiler, node, args);
+}
+
+bool preprocessor_is_macro_function(struct preprocessor_definition *def) {
+  return def->type == PREPROCESSOR_DEFINITION_MACRO_FUNCTION ||
+         def->type == PREPROCESSOR_DEFINITION_NATIVE_CALLBACK;
+}
+
+int preprocessor_function_args_count(struct preprocessor_function_args *args) {
+  if (!args) {
+    return 0;
+  }
+
+  return vector_count(args->args);
+}
+
+int preprocessor_macro_function_push_arg(
+    struct compile_process *compiler, struct preprocessor_definition *def,
+    struct preprocessor_function_args *args, const char *arg_name,
+    struct vector *def_token_vec, struct vector *value_vec_target) {
+  int arg_index = preprocessor_definition_argument_exists(def, arg_name);
+  if (arg_index != -1) {
+    preprocessor_function_argument_push_to_vec(
+        preprocessor_function_argument_at(args, arg_index), value_vec_target);
+  }
+
+  return arg_index;
+}
+
+void preprocessor_token_vec_push_src_token_to_dst(
+    struct compile_process *compiler, struct token *token,
+    struct vector *dst_vec) {
+  vector_push(dst_vec, token);
+}
+
+void preprocessor_token_vec_push_src_resolve_definition(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *dst_vec, struct token *token) {
+#warning "handle typedef"
+#warning "handle identifiers"
+
+  preprocessor_token_vec_push_src_token_to_dst(compiler, token, dst_vec);
+}
+
+void preprocessor_token_vec_push_src_resolve_definitions(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *dst_vec) {
+  assert(src_vec != compiler->token_vec);
+  vector_set_peek_pointer(src_vec, 0);
+  struct token *token = vector_peek(src_vec);
+  while (token) {
+    preprocessor_token_vec_push_src_resolve_definition(compiler, src_vec,
+                                                       dst_vec, token);
+    token = vector_peek(src_vec);
+  }
+}
+
+int preprocessor_macro_function_push_something_definition(
+    struct compile_process *compiler, struct preprocessor_definition *def,
+    struct preprocessor_function_args *args, struct token *arg_token,
+    struct vector *def_token_vec, struct vector *value_vec_target) {
+  if (arg_token->type != TOKEN_TYPE_IDENTIFIER) {
+    return -1;
+  }
+
+  const char *arg_name = arg_token->sval;
+  int res = preprocessor_macro_function_push_arg(
+      compiler, def, args, arg_name, def_token_vec, value_vec_target);
+  if (res != -1) {
+    return 0;
+  }
+
+  // there is no argument with this name
+  struct preprocessor_definition *arg_def =
+      preprocessor_get_definition(compiler->preprocessor, arg_name);
+  if (arg_def) {
+    preprocessor_token_vec_push_src_resolve_definitions(
+        compiler, preprocessor_definition_value(arg_def), compiler->token_vec);
+    return 0;
+  }
+
+  return -1;
+}
+
+void preprocessor_macro_function_push_something(
+    struct compile_process *compiler, struct preprocessor_definition *def,
+    struct preprocessor_function_args *args, struct token *arg_token,
+    struct vector *def_token_vec, struct vector *value_vec_target) {
+#warning "process concat"
+  vector_push(value_vec_target, arg_token);
+}
+
+int preprocessor_macro_function_execute(struct compile_process *compiler,
+                                        const char *func_name,
+                                        struct preprocessor_function_args *args,
+                                        int flags) {
+  struct preprocessor *preprocessor = compiler->preprocessor;
+  struct preprocessor_definition *def =
+      preprocessor_get_definition(preprocessor, func_name);
+  if (!def) {
+    compiler_error(compiler, "macro function not found");
+  }
+
+  if (!preprocessor_is_macro_function(def)) {
+    compiler_error(compiler, "not a macro function");
+  }
+
+  if (vector_count(def->standard.args) !=
+          preprocessor_function_args_count(args) &&
+      def->type != PREPROCESSOR_DEFINITION_NATIVE_CALLBACK) {
+    compiler_error(compiler, "macro function argument count mismatch to %s",
+                   func_name);
+  }
+
+  struct vector *value_vec_target = vector_create(sizeof(struct token));
+  struct vector *def_token_vec =
+      preprocessor_definition_value_with_arguments(def, args);
+  vector_set_peek_pointer(def_token_vec, 0);
+  struct token *token = vector_peek(def_token_vec);
+  while (token) {
+#warning "impl strings"
+    preprocessor_macro_function_push_something(compiler, def, args, token,
+                                               def_token_vec, value_vec_target);
+    token = vector_peek(def_token_vec);
+  }
+
+  if (flags & PREPROCESSOR_FLAG_EVALUATE_NODE) {
+    return preprocessor_parse_evaluate(compiler, value_vec_target);
+  }
+
+  preprocessor_token_vec_push_src(compiler, value_vec_target);
+  return 0;
+}
+
+int preprocessor_evaluate_function_call(struct compile_process *compiler,
+                                        struct preprocessor_node *node) {
+  const char *macro_func_name = node->exp.left->sval;
+  struct preprocessor_node *call_args = node->exp.right->paren_node.exp;
+  struct preprocessor_function_args *args = preprocessor_function_args_create();
+
+  // evaluate preprocessor arguments
+  preprocessor_evaluate_function_call_args(compiler, call_args, args);
+
+  return preprocessor_macro_function_execute(compiler, macro_func_name, args,
+                                             PREPROCESSOR_FLAG_EVALUATE_NODE);
+}
+
 int preprocessor_evaluate_exp(struct compile_process *compiler,
                               struct preprocessor_node *node) {
-//   if (preprocessor_exp_is_macro_function_call(node)) {
+  if (preprocessor_exp_is_macro_function_call(node)) {
 #warning "handle macro function call"
-  //   }
+  }
 
   long left_operand = preprocessor_evaluate(compiler, node->exp.left);
   if (node->exp.right->type == PREPROCESSOR_TENARY_NODE) {
