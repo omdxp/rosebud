@@ -851,6 +851,33 @@ int preprocessor_evaluate_identifier(struct compile_process *compiler,
   return preprocessor_definition_evaluated_value(def, NULL);
 }
 
+int preprocessor_arithmetic(struct compile_process *compiler, long left,
+                            long right, const char *op) {
+  bool success = false;
+  long res = arithmetic(compiler, left, right, op, &success);
+  if (!success) {
+    compiler_error(compiler, "arithmetic error");
+  }
+
+  return res;
+}
+
+int preprocessor_evaluate_exp(struct compile_process *compiler,
+                              struct preprocessor_node *node) {
+//   if (preprocessor_exp_is_macro_function_call(node)) {
+#warning "handle macro function call"
+  //   }
+
+  long left_operand = preprocessor_evaluate(compiler, node->exp.left);
+  if (node->exp.right->type == PREPROCESSOR_TENARY_NODE) {
+#warning "handle ternary"
+  }
+
+  long right_operand = preprocessor_evaluate(compiler, node->exp.right);
+  return preprocessor_arithmetic(compiler, left_operand, right_operand,
+                                 node->exp.op);
+}
+
 int preprocessor_evaluate(struct compile_process *compiler,
                           struct preprocessor_node *root_node) {
   struct preprocessor_node *current = root_node;
@@ -862,6 +889,10 @@ int preprocessor_evaluate(struct compile_process *compiler,
 
   case PREPROCESSOR_IDENTIFIER_NODE:
     res = preprocessor_evaluate_identifier(compiler, current);
+    break;
+
+  case PREPROCESSOR_EXPRESSION_NODE:
+    res = preprocessor_evaluate_exp(compiler, current);
     break;
   }
 

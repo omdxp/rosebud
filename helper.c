@@ -250,3 +250,60 @@ bool unary_operand_compatible(struct token *token) {
 bool is_left_operanded_unary_operator(const char *op) {
   return S_EQ(op, "++") || S_EQ(op, "--");
 }
+
+long arithmetic(struct compile_process *compiler, long left, long right,
+                const char *op, bool *success) {
+  *success = true;
+  int res = 0;
+  if (S_EQ(op, "+")) {
+    res = left + right;
+  } else if (S_EQ(op, "-")) {
+    res = left - right;
+  } else if (S_EQ(op, "*")) {
+    res = left * right;
+  } else if (S_EQ(op, "/")) {
+    if (right == 0) {
+      *success = false;
+      return 0;
+    }
+
+    res = left / right;
+  } else if (S_EQ(op, "%")) {
+    if (right == 0) {
+      *success = false;
+      return 0;
+    }
+
+    res = left % right;
+  } else if (S_EQ(op, "<<")) {
+    res = left << right;
+  } else if (S_EQ(op, ">>")) {
+    res = left >> right;
+  } else if (S_EQ(op, "&")) {
+    res = left & right;
+  } else if (S_EQ(op, "|")) {
+    res = left | right;
+  } else if (S_EQ(op, "^")) {
+    res = left ^ right;
+  } else if (S_EQ(op, "&&")) {
+    res = left && right;
+  } else if (S_EQ(op, "||")) {
+    res = left || right;
+  } else if (S_EQ(op, "==")) {
+    res = left == right;
+  } else if (S_EQ(op, "!=")) {
+    res = left != right;
+  } else if (S_EQ(op, "<")) {
+    res = left < right;
+  } else if (S_EQ(op, ">")) {
+    res = left > right;
+  } else if (S_EQ(op, "<=")) {
+    res = left <= right;
+  } else if (S_EQ(op, ">=")) {
+    res = left >= right;
+  } else {
+    *success = false;
+  }
+
+  return res;
+}

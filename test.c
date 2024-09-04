@@ -1,4 +1,4 @@
-#define ABC 0
-#if ABC
-#error "this is an error"
+#define ABC 1 / 1
+#if ABC <= 3
+#warning "ABC is 3"
 #endif
