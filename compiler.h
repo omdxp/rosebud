@@ -272,6 +272,8 @@ struct preprocessor_definition {
       PREPROCESSOR_DEFINITION_NATIVE_CALL_VALUE value;
     } native;
   };
+
+  struct preprocessor *preprocessor;
 };
 
 struct preprocessor_included_file {

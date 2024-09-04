@@ -177,6 +177,39 @@ void preprocessor_function_argument_push_to_vec(
   }
 }
 
+void preprocessor_token_push_to_dst(struct vector *token_vec,
+                                    struct token *token) {
+  struct token t = *token;
+  vector_push(token_vec, &t);
+}
+
+void preprocessor_token_push_dst(struct compile_process *compiler,
+                                 struct token *token) {
+  preprocessor_token_push_to_dst(compiler->token_vec, token);
+}
+
+void preprocessor_token_vec_push_src_to_dst(struct compile_process *compiler,
+                                            struct vector *src_vec,
+                                            struct vector *dst_vec) {
+  vector_set_peek_pointer(src_vec, 0);
+  struct token *token = vector_peek(src_vec);
+  while (token) {
+    vector_push(dst_vec, token);
+    token = vector_peek(src_vec);
+  }
+}
+
+void preprocessor_token_vec_push_src(struct compile_process *compiler,
+                                     struct vector *src_vec) {
+  preprocessor_token_vec_push_src_to_dst(compiler, src_vec,
+                                         compiler->token_vec);
+}
+
+void preprocessor_token_vec_push_src_token(struct compile_process *compiler,
+                                           struct token *token) {
+  vector_push(compiler->token_vec, token);
+}
+
 void preprocessor_init(struct preprocessor *preprocessor) {
   memset(preprocessor, 0, sizeof(struct preprocessor));
   preprocessor->defs = vector_create(sizeof(struct preprocessor_definition *));
@@ -394,10 +427,137 @@ struct expressionable_config preprocessor_expressionable_config = {
         .is_custom_operator = preprocessor_is_custom_operator,
     }};
 
+bool preprocessor_is_preprocessor_keyword(const char *keyword) {
+  return S_EQ(keyword, "define") || S_EQ(keyword, "undef") ||
+         S_EQ(keyword, "warning") || S_EQ(keyword, "error") ||
+         S_EQ(keyword, "if") || S_EQ(keyword, "ifdef") ||
+         S_EQ(keyword, "ifndef") || S_EQ(keyword, "elif") ||
+         S_EQ(keyword, "else") || S_EQ(keyword, "endif") ||
+         S_EQ(keyword, "include") || S_EQ(keyword, "typedef");
+}
+
+bool preprocessor_token_is_preprocessor_keyword(struct token *token) {
+  return token->type == TOKEN_TYPE_IDENTIFIER ||
+         token->type == TOKEN_TYPE_KEYWORD &&
+             preprocessor_is_preprocessor_keyword(token->sval);
+}
+
+bool preprocessor_token_is_define(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "define");
+}
+
+void preprocessor_multi_value_insert_to_vector(struct compile_process *compiler,
+                                               struct vector *vec) {
+  struct token *value_token = preprocessor_next_token(compiler);
+  while (value_token) {
+    if (value_token->type == TOKEN_TYPE_NEWLINE) {
+      break;
+    }
+
+    if (token_is_symbol(value_token, '\\')) {
+      // ignore
+      preprocessor_next_token(compiler);
+      value_token = preprocessor_next_token(compiler);
+      continue;
+    }
+
+    vector_push(vec, value_token);
+    value_token = preprocessor_next_token(compiler);
+  }
+}
+
+void preprocessor_definition_remove(struct preprocessor *preprocessor,
+                                    const char *name) {
+  vector_set_peek_pointer(preprocessor->defs, 0);
+  struct preprocessor_definition *cur_def = vector_peek_ptr(preprocessor->defs);
+  while (cur_def) {
+    if (S_EQ(cur_def->name, name)) {
+      // remove definition
+      vector_pop_last_peek(preprocessor->defs);
+      return;
+    }
+
+    cur_def = vector_peek_ptr(preprocessor->defs);
+  }
+}
+
+struct preprocessor_definition *
+preprocessor_definition_create(const char *name, struct vector *value,
+                               struct vector *args,
+                               struct preprocessor *preprocessor) {
+  // unset definition if it's already created
+  preprocessor_definition_remove(preprocessor, name);
+
+  struct preprocessor_definition *def =
+      malloc(sizeof(struct preprocessor_definition));
+  def->type = PREPROCESSOR_DEFINITION_STANDARD;
+  def->name = name;
+  def->standard.value = value;
+  def->standard.args = args;
+  def->preprocessor = preprocessor;
+  if (args && vector_count(def->standard.args)) {
+    def->type = PREPROCESSOR_DEFINITION_MACRO_FUNCTION;
+  }
+
+  vector_push(preprocessor->defs, &def);
+  return def;
+}
+
+void preprocessor_handle_definition_token(struct compile_process *compiler) {
+  struct token *name_token = preprocessor_next_token(compiler);
+  struct vector *args = vector_create(sizeof(const char *));
+#warning "handle macro function arguments"
+
+  struct vector *value_token_vec = vector_create(sizeof(struct token));
+  preprocessor_multi_value_insert_to_vector(compiler, value_token_vec);
+
+  struct preprocessor *preprocessor = compiler->preprocessor;
+  preprocessor_definition_create(name_token->sval, value_token_vec, args,
+                                 preprocessor);
+}
+
+int preprocessor_handle_hashtag_token(struct compile_process *compiler,
+                                      struct token *token) {
+  bool is_preprocessed = false;
+  struct token *next_token = preprocessor_next_token(compiler);
+  if (preprocessor_token_is_define(next_token)) {
+    preprocessor_handle_definition_token(compiler);
+    is_preprocessed = true;
+  }
+
+  return is_preprocessed;
+}
+
+void preprocessor_handle_symbol(struct compile_process *compiler,
+                                struct token *token) {
+  int is_preprocessed = false;
+  if (token->cval == '#') {
+    is_preprocessed = preprocessor_handle_hashtag_token(compiler, token);
+  }
+
+  if (!is_preprocessed) {
+    preprocessor_token_push_dst(compiler, token);
+  }
+}
+
 void preprocessor_handle_token(struct compile_process *compiler,
                                struct token *token) {
   switch (token->type) {
-    // handle all token types
+  case TOKEN_TYPE_NEWLINE:
+    // ignored
+    break;
+
+  case TOKEN_TYPE_SYMBOL:
+    preprocessor_handle_symbol(compiler, token);
+    break;
+
+  default:
+    preprocessor_token_push_dst(compiler, token);
+    break;
   }
 }
 

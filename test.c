@@ -1,5 +1,3 @@
-int printf(const char *s, ...);
+#define ABC 50
 
-int sum(int x, int y) { return x + y; }
-
-int main() { printf("%d\n", sum(20, 30)); }
+int main() { return 0; }
