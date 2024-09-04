@@ -1170,6 +1170,41 @@ void preprocessor_handle_symbol(struct compile_process *compiler,
   }
 }
 
+int preprocessor_handle_identifier_for_token_vector(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *dst_vec, struct token *token) {
+  struct preprocessor_definition *def =
+      preprocessor_get_definition(compiler->preprocessor, token->sval);
+  if (!def) {
+    // not a macro
+    preprocessor_token_push_to_dst(dst_vec, token);
+    return -1;
+  }
+
+  if (def->type == PREPROCESSOR_DEFINITION_TYPEDEF) {
+    preprocessor_token_vec_push_src_to_dst(
+        compiler, preprocessor_definition_value(def), dst_vec);
+    return 0;
+  }
+
+  if (token_is_operator(vector_peek_no_increment(src_vec), "(")) {
+#warning "handle macro function"
+    // struct preprocessor_function_args *args =
+    //     preprocessor_handle_identifier_macro_call_args(compiler, src_vec);
+  }
+
+  struct vector *def_val = preprocessor_definition_value(def);
+  preprocessor_token_vec_push_src_resolve_definitions(
+      compiler, preprocessor_definition_value(def), dst_vec);
+  return 0;
+}
+
+int preprocessor_handle_identifier(struct compile_process *compiler,
+                                   struct token *token) {
+  return preprocessor_handle_identifier_for_token_vector(
+      compiler, compiler->token_vec_original, compiler->token_vec, token);
+}
+
 void preprocessor_handle_token(struct compile_process *compiler,
                                struct token *token) {
   switch (token->type) {
@@ -1179,6 +1214,10 @@ void preprocessor_handle_token(struct compile_process *compiler,
 
   case TOKEN_TYPE_SYMBOL:
     preprocessor_handle_symbol(compiler, token);
+    break;
+
+  case TOKEN_TYPE_IDENTIFIER:
+    preprocessor_handle_identifier(compiler, token);
     break;
 
   default:

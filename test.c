@@ -1,1 +1,3 @@
-#define SUM(a, b) a + b
+#define ABC 10
+
+int x = ABC;
