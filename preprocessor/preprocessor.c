@@ -479,6 +479,37 @@ bool preprocessor_token_is_undef(struct token *token) {
   return S_EQ(token->sval, "undef");
 }
 
+bool preprocessor_token_is_warning(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "warning");
+}
+
+struct buffer *
+preprocessor_multi_value_string(struct compile_process *compiler) {
+  struct buffer *str_buf = buffer_create();
+  struct token *value_token = preprocessor_next_token(compiler);
+  while (value_token) {
+    if (value_token->type == TOKEN_TYPE_NEWLINE) {
+      break;
+    }
+
+    if (token_is_symbol(value_token, '\\')) {
+      // skip next token
+      preprocessor_next_token(compiler);
+      value_token = preprocessor_next_token(compiler);
+      continue;
+    }
+
+    buffer_printf(str_buf, "%s", value_token->sval);
+    value_token = preprocessor_next_token(compiler);
+  }
+
+  return str_buf;
+}
+
 void preprocessor_multi_value_insert_to_vector(struct compile_process *compiler,
                                                struct vector *vec) {
   struct token *value_token = preprocessor_next_token(compiler);
@@ -599,6 +630,11 @@ void preprocessor_handle_undef_token(struct compile_process *compiler) {
   preprocessor_definition_remove(compiler->preprocessor, name_token->sval);
 }
 
+void preprocessor_handle_warning_token(struct compile_process *compiler) {
+  struct buffer *str_buf = preprocessor_multi_value_string(compiler);
+  preprocessor_exec_warning(compiler, buffer_ptr(str_buf));
+}
+
 int preprocessor_handle_hashtag_token(struct compile_process *compiler,
                                       struct token *token) {
   bool is_preprocessed = false;
@@ -608,6 +644,9 @@ int preprocessor_handle_hashtag_token(struct compile_process *compiler,
     is_preprocessed = true;
   } else if (preprocessor_token_is_undef(next_token)) {
     preprocessor_handle_undef_token(compiler);
+    is_preprocessed = true;
+  } else if (preprocessor_token_is_warning(next_token)) {
+    preprocessor_handle_warning_token(compiler);
     is_preprocessed = true;
   }
 
