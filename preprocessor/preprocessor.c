@@ -26,6 +26,7 @@ enum {
   PREPROCESSOR_KEYWORD_NODE,
   PREPROCESSOR_UNARY_NODE,
   PREPROCESSOR_EXPRESSION_NODE,
+  PREPROCESSOR_PARENTHESES_NODE,
   PREPROCESSOR_JOINED_NODE,
   PREPROCESSOR_TENARY_NODE,
 };
@@ -194,6 +195,204 @@ struct preprocessor *preprocessor_create(struct compile_process *compiler) {
 struct token *preprocessor_next_token(struct compile_process *compiler) {
   return vector_peek(compiler->token_vec_original);
 }
+
+void *preprocessor_handle_number_token(struct expressionable *expressionable) {
+  struct token *token = expressionable_token_next(expressionable);
+  return preprocessor_node_create(&(struct preprocessor_node){
+      .type = PREPROCESSOR_NUMBER_NODE, .const_val = token->llnum});
+}
+
+void *
+preprocessor_handle_identifier_token(struct expressionable *expressionable) {
+  struct token *token = expressionable_token_next(expressionable);
+  bool is_preprocessor_keyword = preprocessor_is_keyword(token->sval);
+  int type = PREPROCESSOR_IDENTIFIER_NODE;
+  if (is_preprocessor_keyword) {
+    type = PREPROCESSOR_KEYWORD_NODE;
+  }
+
+  return preprocessor_node_create(
+      &(struct preprocessor_node){.type = type, .sval = token->sval});
+}
+
+void preprocessor_make_unary_node(struct expressionable *expressionable,
+                                  const char *op, void *operand) {
+  struct preprocessor_node *operand_node = operand;
+  void *unary_node = preprocessor_node_create(
+      &(struct preprocessor_node){.type = PREPROCESSOR_UNARY_NODE,
+                                  .unary_node = {
+                                      .op = op,
+                                      .operand = operand_node,
+                                  }});
+  expressionable_node_push(expressionable, unary_node);
+}
+
+void preprocessor_make_expression_node(struct expressionable *expressionable,
+                                       void *left, void *right,
+                                       const char *op) {
+  struct preprocessor_node exp_node = {
+      .type = PREPROCESSOR_EXPRESSION_NODE,
+      .exp =
+          {
+              .left = left,
+              .right = right,
+              .op = op,
+          },
+  };
+  expressionable_node_push(expressionable, preprocessor_node_create(&exp_node));
+}
+
+void preprocessor_make_parentheses_node(struct expressionable *expressionable,
+                                        void *exp) {
+  struct preprocessor_node *exp_node = exp;
+  struct preprocessor_node paren_node = {
+      .type = PREPROCESSOR_PARENTHESES_NODE,
+      .paren_node =
+          {
+              .exp = exp_node,
+          },
+  };
+  expressionable_node_push(expressionable,
+                           preprocessor_node_create(&paren_node));
+}
+
+void preprocessor_make_tenary_node(struct expressionable *expressionable,
+                                   void *true_node_ptr, void *false_node_ptr) {
+  struct preprocessor_node *true_node = true_node_ptr;
+  struct preprocessor_node *false_node = false_node_ptr;
+  expressionable_node_push(expressionable,
+                           preprocessor_node_create(&(struct preprocessor_node){
+                               .type = PREPROCESSOR_TENARY_NODE,
+                               .tenary_node =
+                                   {
+                                       .true_node = true_node,
+                                       .false_node = false_node,
+                                   },
+                           }));
+}
+
+int preprocessor_get_node_type(struct expressionable *expressionable,
+                               void *node) {
+  int generic_type = EXPRESSIONABLE_GENERIC_TYPE_NON_GENERIC;
+  struct preprocessor_node *preprocessor_node = node;
+  switch (preprocessor_node->type) {
+  case PREPROCESSOR_NUMBER_NODE:
+    generic_type = EXPRESSIONABLE_GENERIC_TYPE_NUMBER;
+    break;
+
+  case PREPROCESSOR_IDENTIFIER_NODE:
+  case PREPROCESSOR_KEYWORD_NODE:
+    generic_type = EXPRESSIONABLE_GENERIC_TYPE_IDENTIFIER;
+    break;
+
+  case PREPROCESSOR_UNARY_NODE:
+    generic_type = EXPRESSIONABLE_GENERIC_TYPE_UNARY;
+    break;
+
+  case PREPROCESSOR_EXPRESSION_NODE:
+    generic_type = EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION;
+    break;
+
+  case PREPROCESSOR_PARENTHESES_NODE:
+    generic_type = EXPRESSIONABLE_GENERIC_TYPE_PARENTHESES;
+    break;
+  }
+
+  return generic_type;
+}
+
+void *preprocessor_get_node_left(struct expressionable *expressionable,
+                                 void *node) {
+  struct preprocessor_node *preprocessor_node = node;
+  return preprocessor_node->exp.left;
+}
+
+void *preprocessor_get_node_right(struct expressionable *expressionable,
+                                  void *node) {
+  struct preprocessor_node *preprocessor_node = node;
+  return preprocessor_node->exp.right;
+}
+
+const char *preprocessor_get_node_op(struct expressionable *expressionable,
+                                     void *node) {
+  struct preprocessor_node *preprocessor_node = node;
+  return preprocessor_node->exp.op;
+}
+
+void **preprocessor_get_left_node_address(struct expressionable *expressionable,
+                                          void *node) {
+  struct preprocessor_node *preprocessor_node = node;
+  return (void **)&preprocessor_node->exp.left;
+}
+
+void **
+preprocessor_get_right_node_address(struct expressionable *expressionable,
+                                    void *node) {
+  struct preprocessor_node *preprocessor_node = node;
+  return (void **)&preprocessor_node->exp.right;
+}
+
+void preprocessor_set_expression_node(struct expressionable *expressionable,
+                                      void *node, void *left, void *right,
+                                      const char *op) {
+  struct preprocessor_node *preprocessor_node = node;
+  preprocessor_node->exp.left = left;
+  preprocessor_node->exp.right = right;
+  preprocessor_node->exp.op = op;
+}
+
+bool preprocessor_should_join_nodes(struct expressionable *expressionable,
+                                    void *prev_node, void *node) {
+  return true;
+}
+
+void *preprocessor_join_nodes(struct expressionable *expressionable, void *prev,
+                              void *node) {
+  struct preprocessor_node *prev_node = prev;
+  struct preprocessor_node *current_node = node;
+  struct preprocessor_node joined_node = {
+      .type = PREPROCESSOR_JOINED_NODE,
+      .joined_node =
+          {
+              .left = prev_node,
+              .right = current_node,
+          },
+  };
+  return preprocessor_node_create(&joined_node);
+}
+
+bool preprocessor_expecting_additional_node(
+    struct expressionable *expressionable, void *node) {
+  struct preprocessor_node *preprocessor_node = node;
+  return preprocessor_node->type == PREPROCESSOR_KEYWORD_NODE &&
+         S_EQ(preprocessor_node->sval, "defined");
+}
+
+bool preprocessor_is_custom_operator(struct expressionable *expressionable,
+                                     struct token *token) {
+  return false;
+}
+
+struct expressionable_config preprocessor_expressionable_config = {
+    .callbacks = {
+        .handle_number = preprocessor_handle_number_token,
+        .handle_identifier = preprocessor_handle_identifier_token,
+        .make_unary_node = preprocessor_make_unary_node,
+        .make_expression_node = preprocessor_make_expression_node,
+        .make_parentheses_node = preprocessor_make_parentheses_node,
+        .make_tenary_node = preprocessor_make_tenary_node,
+        .get_node_type = preprocessor_get_node_type,
+        .get_node_left = preprocessor_get_node_left,
+        .get_node_right = preprocessor_get_node_right,
+        .get_node_op = preprocessor_get_node_op,
+        .get_left_node_address = preprocessor_get_left_node_address,
+        .get_right_node_address = preprocessor_get_right_node_address,
+        .set_expression_node = preprocessor_set_expression_node,
+        .should_join_nodes = preprocessor_should_join_nodes,
+        .join_nodes = preprocessor_join_nodes,
+        .expecting_additional_node = preprocessor_expecting_additional_node,
+        .is_custom_operator = preprocessor_is_custom_operator,
+    }};
 
 void preprocessor_handle_token(struct compile_process *compiler,
                                struct token *token) {
