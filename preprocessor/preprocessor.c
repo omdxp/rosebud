@@ -514,6 +514,14 @@ bool preprocessor_token_is_ifndef(struct token *token) {
   return S_EQ(token->sval, "ifndef");
 }
 
+bool preprocessor_token_is_if(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "if");
+}
+
 struct buffer *
 preprocessor_multi_value_string(struct compile_process *compiler) {
   struct buffer *str_buf = buffer_create();
@@ -749,6 +757,39 @@ void preprocessor_read_to_endif(struct compile_process *compiler,
   }
 }
 
+int preprocessor_evaluate_number(struct preprocessor_node *node) {
+  return node->const_val.llnum;
+}
+
+int preprocessor_evaluate(struct compile_process *compiler,
+                          struct preprocessor_node *root_node) {
+  struct preprocessor_node *current = root_node;
+  int res = 0;
+  switch (current->type) {
+  case PREPROCESSOR_NUMBER_NODE:
+    res = preprocessor_evaluate_number(current);
+    break;
+  }
+
+  return res;
+}
+
+int preprocessor_parse_evaluate(struct compile_process *compiler,
+                                struct vector *token_vec) {
+  struct vector *node_vec = vector_create(sizeof(struct preprocessor_node *));
+  struct expressionable *expressionable = expressionable_create(
+      &preprocessor_expressionable_config, token_vec, node_vec, 0);
+  expressionable_parse(expressionable);
+
+  struct preprocessor_node *root_node = expressionable_node_pop(expressionable);
+  return preprocessor_evaluate(compiler, root_node);
+}
+
+void preprocessor_handle_if_token(struct compile_process *compiler) {
+  int res = preprocessor_parse_evaluate(compiler, compiler->token_vec_original);
+  preprocessor_read_to_endif(compiler, res > 0);
+}
+
 void preprocessor_handle_ifdef_token(struct compile_process *compiler) {
   struct token *cond_token = preprocessor_next_token(compiler);
   if (!cond_token) {
@@ -793,6 +834,9 @@ int preprocessor_handle_hashtag_token(struct compile_process *compiler,
     is_preprocessed = true;
   } else if (preprocessor_token_is_ifndef(next_token)) {
     preprocessor_handle_ifndef_token(compiler);
+    is_preprocessed = true;
+  } else if (preprocessor_token_is_if(next_token)) {
+    preprocessor_handle_if_token(compiler);
     is_preprocessed = true;
   }
 

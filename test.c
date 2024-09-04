@@ -1,4 +1,3 @@
-#define ABC
-#ifndef ABC
+#if 0
 #error testing
 #endif
