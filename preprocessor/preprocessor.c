@@ -487,6 +487,14 @@ bool preprocessor_token_is_warning(struct token *token) {
   return S_EQ(token->sval, "warning");
 }
 
+bool preprocessor_token_is_error(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "error");
+}
+
 struct buffer *
 preprocessor_multi_value_string(struct compile_process *compiler) {
   struct buffer *str_buf = buffer_create();
@@ -635,6 +643,11 @@ void preprocessor_handle_warning_token(struct compile_process *compiler) {
   preprocessor_exec_warning(compiler, buffer_ptr(str_buf));
 }
 
+void preprocessor_handle_error_token(struct compile_process *compiler) {
+  struct buffer *str_buf = preprocessor_multi_value_string(compiler);
+  preprocessor_exec_error(compiler, buffer_ptr(str_buf));
+}
+
 int preprocessor_handle_hashtag_token(struct compile_process *compiler,
                                       struct token *token) {
   bool is_preprocessed = false;
@@ -647,6 +660,9 @@ int preprocessor_handle_hashtag_token(struct compile_process *compiler,
     is_preprocessed = true;
   } else if (preprocessor_token_is_warning(next_token)) {
     preprocessor_handle_warning_token(compiler);
+    is_preprocessed = true;
+  } else if (preprocessor_token_is_error(next_token)) {
+    preprocessor_handle_error_token(compiler);
     is_preprocessed = true;
   }
 
