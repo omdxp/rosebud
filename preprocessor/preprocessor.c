@@ -471,6 +471,14 @@ bool preprocessor_token_is_define(struct token *token) {
   return S_EQ(token->sval, "define");
 }
 
+bool preprocessor_token_is_undef(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "undef");
+}
+
 void preprocessor_multi_value_insert_to_vector(struct compile_process *compiler,
                                                struct vector *vec) {
   struct token *value_token = preprocessor_next_token(compiler);
@@ -586,12 +594,20 @@ void preprocessor_handle_definition_token(struct compile_process *compiler) {
                                  preprocessor);
 }
 
+void preprocessor_handle_undef_token(struct compile_process *compiler) {
+  struct token *name_token = preprocessor_next_token(compiler);
+  preprocessor_definition_remove(compiler->preprocessor, name_token->sval);
+}
+
 int preprocessor_handle_hashtag_token(struct compile_process *compiler,
                                       struct token *token) {
   bool is_preprocessed = false;
   struct token *next_token = preprocessor_next_token(compiler);
   if (preprocessor_token_is_define(next_token)) {
     preprocessor_handle_definition_token(compiler);
+    is_preprocessed = true;
+  } else if (preprocessor_token_is_undef(next_token)) {
+    preprocessor_handle_undef_token(compiler);
     is_preprocessed = true;
   }
 

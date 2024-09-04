@@ -1,1 +1,2 @@
-#define ABC(x, y)
+#define ABC 1
+#undef ABC
