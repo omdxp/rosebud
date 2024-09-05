@@ -137,11 +137,10 @@ int expressionable_parser_get_precedence_for_operator(
     const char *op, struct expressionable_op_precedence_group **group_out) {
   *group_out = NULL;
   for (int i = 0; i < TOTAL_OPERATOR_GROUPS; i++) {
-    struct expressionable_op_precedence_group *group = &op_precedence[i];
-    for (int j = 0; group->operators[j]; j++) {
-      if (S_EQ(group->operators[j], op)) {
-        *group_out = group;
-        return 0;
+    for (int j = 0; op_precedence[i].operators[j]; j++) {
+      if (S_EQ(op, op_precedence[i].operators[j])) {
+        *group_out = &op_precedence[i];
+        return i;
       }
     }
   }
@@ -206,7 +205,7 @@ void expressionable_parser_reorder_expression(
   void *node = *node_out;
   int node_type = expressionable_callbacks(expressionable)
                       ->get_node_type(expressionable, node);
-  if (node_type == EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION) {
+  if (node_type != EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION) {
     return;
   }
 
@@ -220,19 +219,19 @@ void expressionable_parser_reorder_expression(
                             ->get_node_type(expressionable, right_node);
   assert(left_node_type >= 0 && right_node_type >= 0);
 
-  if (left_node_type == EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION && right_node &&
-      right_node_type == EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION) {
+  if (left_node_type != EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION && right_node &&
+      right_node_type != EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION) {
     return;
   }
 
-  if (left_node_type == EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION && right_node &&
+  if (left_node_type != EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION && right_node &&
       right_node_type == EXPRESSIONABLE_GENERIC_TYPE_EXPRESSION) {
     const char *right_op = expressionable_callbacks(expressionable)
                                ->get_node_op(expressionable, right_node);
     const char *main_op = expressionable_callbacks(expressionable)
                               ->get_node_op(expressionable, node);
 
-    if (expressionable_parser_left_op_has_priority(main_op, right_node)) {
+    if (expressionable_parser_left_op_has_priority(main_op, right_op)) {
       expressionable_parser_node_shift_children_left(expressionable, node);
 
       void **address_of_left =
@@ -266,7 +265,7 @@ void expressionable_expect_op(struct expressionable *expressionable,
 
 void expressionable_expect_sym(struct expressionable *expressionable, char c) {
   struct token *next_token = expressionable_token_next(expressionable);
-  if (!next_token || !token_is_symbol(next_token, c)) {
+  if (next_token && !token_is_symbol(next_token, c)) {
     expressionable_error(expressionable, "Expected symbol");
   }
 }
@@ -278,13 +277,13 @@ void expressionable_deal_with_additional_expression(
   }
 }
 
-void expressionable_parse_parenteses(struct expressionable *expressionable) {
+void expressionable_parse_parentheses(struct expressionable *expressionable) {
   void *left_node = NULL;
   void *tmp_node = expressionable_node_peek_or_null(expressionable);
   int tmp_type = tmp_node ? expressionable_callbacks(expressionable)
                                 ->get_node_type(expressionable, tmp_node)
                           : -1;
-  if (tmp_type &&
+  if (tmp_node &&
       expressionable_generic_type_is_value_expressionable(tmp_type)) {
     left_node = tmp_node;
     expressionable_node_pop(expressionable);
@@ -367,7 +366,7 @@ void expressionable_parse_for_operator(struct expressionable *expressionable) {
 
   if (expressionable_peek_next(expressionable)->type == TOKEN_TYPE_OPERATOR) {
     if (S_EQ(expressionable_peek_next(expressionable)->sval, "(")) {
-      expressionable_parse_parenteses(expressionable);
+      expressionable_parse_parentheses(expressionable);
     } else if (is_unary_operator(
                    expressionable_peek_next(expressionable)->sval)) {
       expressionable_parse_unary(expressionable);
@@ -410,7 +409,7 @@ void expressionable_parse_tenary(struct expressionable *expressionable) {
 int expressionable_parse_exp(struct expressionable *expressionable,
                              struct token *token) {
   if (S_EQ(expressionable_peek_next(expressionable)->sval, "(")) {
-    expressionable_parse_parenteses(expressionable);
+    expressionable_parse_parentheses(expressionable);
   } else if (S_EQ(expressionable_peek_next(expressionable)->sval, "?")) {
     expressionable_parse_tenary(expressionable);
   } else {

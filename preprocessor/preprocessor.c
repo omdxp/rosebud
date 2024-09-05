@@ -137,8 +137,7 @@ void preprocessor_token_vec_push_keyword_and_identifier(
   vector_push(token_vec, &t2);
 }
 
-struct preprocessor_node *
-preprocessor_node_create(struct preprocessor_node *node) {
+void *preprocessor_node_create(struct preprocessor_node *node) {
   struct preprocessor_node *res = malloc(sizeof(struct preprocessor_node));
   memcpy(res, node, sizeof(struct preprocessor_node));
   return res;
@@ -261,7 +260,7 @@ preprocessor_peek_next_token_skip_nl(struct compile_process *compiler) {
 void *preprocessor_handle_number_token(struct expressionable *expressionable) {
   struct token *token = expressionable_token_next(expressionable);
   return preprocessor_node_create(&(struct preprocessor_node){
-      .type = PREPROCESSOR_NUMBER_NODE, .const_val = token->llnum});
+      .type = PREPROCESSOR_NUMBER_NODE, .const_val.llnum = token->llnum});
 }
 
 void *
@@ -677,6 +676,7 @@ int preprocessor_definition_evaluated_value(
     return preprocessor_definition_evaluated_value_for_standard(def);
   } else if (def->type == PREPROCESSOR_DEFINITION_NATIVE_CALLBACK) {
 #warning "impl native callback"
+    return -1;
   }
 
   compiler_error(def->preprocessor->compiler, "Cannot evaluate to number");

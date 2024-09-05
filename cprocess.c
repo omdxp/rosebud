@@ -22,8 +22,8 @@ compile_process_create(const char *filename, const char *filename_out,
   struct compile_process *process = calloc(1, sizeof(struct compile_process));
   process->node_vec = vector_create(sizeof(struct node *));
   process->node_tree_vec = vector_create(sizeof(struct node *));
-  process->token_vec = vector_create(sizeof(struct token *));
-  process->token_vec_original = vector_create(sizeof(struct token *));
+  process->token_vec = vector_create(sizeof(struct token));
+  process->token_vec_original = vector_create(sizeof(struct token));
 
   process->flags = flags;
   process->cfile.fp = file;
