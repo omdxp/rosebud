@@ -1,3 +1,3 @@
-#define ABC (1 + 2 * (9 - 3))
+#define ABC 0 ? 2 : 3
 
 int main() { return ABC; }

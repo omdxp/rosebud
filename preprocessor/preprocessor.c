@@ -1330,7 +1330,13 @@ int preprocessor_evaluate_exp(struct compile_process *compiler,
 
   long left_operand = preprocessor_evaluate(compiler, node->exp.left);
   if (node->exp.right->type == PREPROCESSOR_TENARY_NODE) {
-#warning "handle ternary"
+    if (left_operand) {
+      return preprocessor_evaluate(compiler,
+                                   node->exp.right->tenary_node.true_node);
+    } else {
+      return preprocessor_evaluate(compiler,
+                                   node->exp.right->tenary_node.false_node);
+    }
   }
 
   long right_operand = preprocessor_evaluate(compiler, node->exp.right);
