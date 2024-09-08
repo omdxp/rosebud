@@ -1025,6 +1025,82 @@ void preprocessor_handle_typedef_body_for_no_struct_or_union(
   }
 }
 
+void preprocessor_handle_typedef_body_for_braces(
+    struct compile_process *compiler, struct vector *token_vec,
+    struct vector *src_vec, bool overflow_use_token_vec) {
+  struct token *token = preprocessor_peek_next_token_with_vector(
+      compiler, src_vec, overflow_use_token_vec);
+  while (token) {
+    if (token_is_symbol(token, '{')) {
+      vector_push(token_vec, token);
+      preprocessor_handle_typedef_body_for_braces(compiler, token_vec, src_vec,
+                                                  overflow_use_token_vec);
+      token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                       overflow_use_token_vec);
+      continue;
+    }
+
+    vector_push(token_vec, token);
+    if (token_is_symbol(token, '}')) {
+      break;
+    }
+
+    token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                     overflow_use_token_vec);
+  }
+}
+
+void preprocessor_handle_typedef_body_for_struct_or_union(
+    struct compile_process *compiler, struct vector *token_vec,
+    struct typedef_type *td, struct vector *src_vec,
+    bool overflow_use_token_vec) {
+  struct token *token = preprocessor_peek_next_token_with_vector(
+      compiler, src_vec, overflow_use_token_vec);
+  assert(token_is_keyword(token, "struct"));
+
+  td->type = TYPEDEF_TYPE_STRUCT_TYPEDEF;
+  // push struct keyword
+  vector_push(token_vec, token);
+
+  token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                   overflow_use_token_vec);
+
+  // do we have a name?
+  if (token->type == TOKEN_TYPE_IDENTIFIER) {
+    td->_struct.name = token->sval;
+    vector_push(token_vec, token);
+    token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                     overflow_use_token_vec);
+    if (token->type == TOKEN_TYPE_IDENTIFIER) {
+      // just declaration
+      vector_push(token_vec, token);
+      return;
+    }
+  }
+
+  // handle struct body
+  while (token) {
+    if (token_is_symbol(token, '{')) {
+      td->type = TYPEDEF_TYPE_STRUCT_TYPEDEF;
+      vector_push(token_vec, token);
+      preprocessor_handle_typedef_body_for_braces(compiler, token_vec, src_vec,
+                                                  overflow_use_token_vec);
+      token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                       overflow_use_token_vec);
+      continue;
+    }
+
+    if (token_is_symbol(token, ';')) {
+      break;
+    }
+
+    preprocessor_token_vec_push_src_resolve_definition(compiler, src_vec,
+                                                       token_vec, token);
+    token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                     overflow_use_token_vec);
+  }
+}
+
 void preprocessor_handle_typedef_body(struct compile_process *compiler,
                                       struct vector *token_vec,
                                       struct typedef_type *td,
@@ -1034,13 +1110,20 @@ void preprocessor_handle_typedef_body(struct compile_process *compiler,
 
   struct token *token = preprocessor_peek_next_token_with_vector_no_increment(
       compiler, src_vec, overflow_use_token_vec);
-  if (token_is_keyword(token, "struct")) {
-#warning "impl typedef struct"
-    // preprocessor_handle_typedef_body_for_struct_or_union
+  if (token_is_keyword(token, "struct") || token_is_keyword(token, "union")) {
+    preprocessor_handle_typedef_body_for_struct_or_union(
+        compiler, token_vec, td, src_vec, overflow_use_token_vec);
   } else {
     preprocessor_handle_typedef_body_for_no_struct_or_union(
         compiler, token_vec, td, src_vec, overflow_use_token_vec);
   }
+}
+
+void preprocessor_token_push_semicolon(struct compile_process *compiler) {
+  struct token t1;
+  t1.type = TOKEN_TYPE_SYMBOL;
+  t1.cval = ';';
+  vector_push(compiler->token_vec, &t1);
 }
 
 void preprocessor_handle_typedef_token(struct compile_process *compiler,
@@ -1066,7 +1149,12 @@ void preprocessor_handle_typedef_token(struct compile_process *compiler,
   vector_pop(token_vec);
 
   if (td.type == TYPEDEF_TYPE_STRUCT_TYPEDEF) {
-#warning "impl struct typedef"
+    preprocessor_token_vec_push_src(compiler, token_vec);
+    preprocessor_token_push_semicolon(compiler);
+
+    token_vec = vector_create(sizeof(struct token));
+    preprocessor_token_vec_push_keyword_and_identifier(token_vec, "struct",
+                                                       td._struct.name);
   }
 
   struct preprocessor *preprocessor = compiler->preprocessor;

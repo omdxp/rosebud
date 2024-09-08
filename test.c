@@ -1,3 +1,6 @@
-typedef int integer;
+typedef struct ab {
+  int a;
+  int b;
+} ab;
 
-integer x = 10;
+ab a;
