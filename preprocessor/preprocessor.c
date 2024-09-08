@@ -97,6 +97,11 @@ int preprocessor_parse_evaluate(struct compile_process *compiler,
 int preprocessor_handle_identifier_for_token_vector(
     struct compile_process *compiler, struct vector *src_vec,
     struct vector *dst_vec, struct token *token);
+void preprocessor_token_vec_push_src_resolve_definition(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *dst_vec, struct token *token);
+struct vector *
+preprocessor_definition_value(struct preprocessor_definition *def);
 
 struct preprocessor_included_file *
 preprocessor_add_included_file(struct preprocessor *preprocessor,
@@ -257,6 +262,29 @@ preprocessor_peek_next_token_skip_nl(struct compile_process *compiler) {
   }
 
   token = preprocessor_next_token_no_increment(compiler);
+  return token;
+}
+
+struct token *preprocessor_peek_next_token_with_vector_no_increment(
+    struct compile_process *compiler, struct vector *priority_token_vec,
+    bool overflow_use_compiler_tokens) {
+  struct token *token = vector_peek_no_increment(priority_token_vec);
+  if (!token && overflow_use_compiler_tokens) {
+    token = preprocessor_peek_next_token_skip_nl(compiler);
+  }
+
+  return token;
+}
+
+struct token *
+preprocessor_peek_next_token_with_vector(struct compile_process *compiler,
+                                         struct vector *priority_token_vec,
+                                         bool overflow_use_compiler_tokens) {
+  struct token *token = vector_peek(priority_token_vec);
+  if (!token && overflow_use_compiler_tokens) {
+    token = preprocessor_peek_next_token_skip_nl(compiler);
+  }
+
   return token;
 }
 
@@ -529,6 +557,14 @@ bool preprocessor_token_is_if(struct token *token) {
   return S_EQ(token->sval, "if");
 }
 
+bool preprocessor_token_is_typedef(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "typedef");
+}
+
 struct buffer *
 preprocessor_multi_value_string(struct compile_process *compiler) {
   struct buffer *str_buf = buffer_create();
@@ -610,6 +646,20 @@ preprocessor_definition_create(const char *name, struct vector *value,
 }
 
 struct preprocessor_definition *
+preprocessor_definition_create_typedef(const char *name,
+                                       struct vector *value_vec,
+                                       struct preprocessor *preprocessor) {
+  struct preprocessor_definition *def =
+      malloc(sizeof(struct preprocessor_definition));
+  def->type = PREPROCESSOR_DEFINITION_TYPEDEF;
+  def->name = name;
+  def->_typedef.value = value_vec;
+  def->preprocessor = preprocessor;
+  vector_push(preprocessor->defs, &def);
+  return def;
+}
+
+struct preprocessor_definition *
 preprocessor_get_definition(struct preprocessor *preprocessor,
                             const char *name) {
   vector_set_peek_pointer(preprocessor->defs, 0);
@@ -630,6 +680,20 @@ struct vector *preprocessor_definition_value_for_standard(
   return def->standard.value;
 }
 
+struct vector *preprocessor_definition_value_for_typedef_or_other(
+    struct preprocessor_definition *def) {
+  if (def->type != PREPROCESSOR_DEFINITION_TYPEDEF) {
+    return preprocessor_definition_value(def);
+  }
+
+  return def->_typedef.value;
+}
+
+struct vector *
+preprocessor_definition_value_for_typedef(struct preprocessor_definition *def) {
+  return preprocessor_definition_value_for_typedef_or_other(def);
+}
+
 struct vector *preprocessor_definition_value_with_arguments(
     struct preprocessor_definition *def,
     struct preprocessor_function_args *args) {
@@ -637,8 +701,7 @@ struct vector *preprocessor_definition_value_with_arguments(
 #warning "impl definition value for native"
     return NULL;
   } else if (def->type == PREPROCESSOR_DEFINITION_TYPEDEF) {
-#warning "impl definition value for typdef"
-    return NULL;
+    return preprocessor_definition_value_for_typedef(def);
   }
 
   return preprocessor_definition_value_for_standard(def);
@@ -943,10 +1006,80 @@ void preprocessor_token_vec_push_src_token_to_dst(
   vector_push(dst_vec, token);
 }
 
+void preprocessor_handle_typedef_body_for_no_struct_or_union(
+    struct compile_process *compiler, struct vector *token_vec,
+    struct typedef_type *td, struct vector *src_vec,
+    bool overflow_use_token_vec) {
+  td->type = TYPEDEF_TYPE_STANDARD;
+  struct token *token = preprocessor_peek_next_token_with_vector(
+      compiler, src_vec, overflow_use_token_vec);
+  while (token) {
+    if (token_is_symbol(token, ';')) {
+      break;
+    }
+
+    preprocessor_token_vec_push_src_resolve_definition(compiler, src_vec,
+                                                       token_vec, token);
+    token = preprocessor_peek_next_token_with_vector(compiler, src_vec,
+                                                     overflow_use_token_vec);
+  }
+}
+
+void preprocessor_handle_typedef_body(struct compile_process *compiler,
+                                      struct vector *token_vec,
+                                      struct typedef_type *td,
+                                      struct vector *src_vec,
+                                      bool overflow_use_token_vec) {
+  memset(td, 0, sizeof(struct typedef_type));
+
+  struct token *token = preprocessor_peek_next_token_with_vector_no_increment(
+      compiler, src_vec, overflow_use_token_vec);
+  if (token_is_keyword(token, "struct")) {
+#warning "impl typedef struct"
+    // preprocessor_handle_typedef_body_for_struct_or_union
+  } else {
+    preprocessor_handle_typedef_body_for_no_struct_or_union(
+        compiler, token_vec, td, src_vec, overflow_use_token_vec);
+  }
+}
+
+void preprocessor_handle_typedef_token(struct compile_process *compiler,
+                                       struct vector *src_vec,
+                                       bool overflow_use_token_vec) {
+  // "typdef unsigned int x;"
+  struct vector *token_vec = vector_create(sizeof(struct token));
+  struct typedef_type td;
+  preprocessor_handle_typedef_body(compiler, token_vec, &td, src_vec,
+                                   overflow_use_token_vec);
+  struct token *name_token = vector_back_or_null(token_vec);
+  if (!name_token) {
+    compiler_error(compiler, "expected name");
+  }
+
+  if (name_token->type != TOKEN_TYPE_IDENTIFIER) {
+    compiler_error(compiler, "expected identifier");
+  }
+
+  td.def_name = name_token->sval;
+
+  // pop off name token
+  vector_pop(token_vec);
+
+  if (td.type == TYPEDEF_TYPE_STRUCT_TYPEDEF) {
+#warning "impl struct typedef"
+  }
+
+  struct preprocessor *preprocessor = compiler->preprocessor;
+  preprocessor_definition_create_typedef(td.def_name, token_vec, preprocessor);
+}
+
 void preprocessor_token_vec_push_src_resolve_definition(
     struct compile_process *compiler, struct vector *src_vec,
     struct vector *dst_vec, struct token *token) {
-#warning "handle typedef"
+  if (preprocessor_token_is_typedef(token)) {
+    preprocessor_handle_typedef_token(compiler, src_vec, true);
+    return;
+  }
 
   if (token->type == TOKEN_TYPE_IDENTIFIER) {
     preprocessor_handle_identifier_for_token_vector(compiler, src_vec, dst_vec,
@@ -1305,6 +1438,17 @@ int preprocessor_handle_identifier(struct compile_process *compiler,
       compiler, compiler->token_vec_original, compiler->token_vec, token);
 }
 
+void preprocessor_handle_keyword(struct compile_process *compiler,
+                                 struct token *token) {
+  if (preprocessor_token_is_typedef(token)) {
+    preprocessor_handle_typedef_token(compiler, compiler->token_vec_original,
+                                      false);
+    return;
+  }
+
+  preprocessor_token_push_dst(compiler, token);
+}
+
 void preprocessor_handle_token(struct compile_process *compiler,
                                struct token *token) {
   switch (token->type) {
@@ -1318,6 +1462,10 @@ void preprocessor_handle_token(struct compile_process *compiler,
 
   case TOKEN_TYPE_IDENTIFIER:
     preprocessor_handle_identifier(compiler, token);
+    break;
+
+  case TOKEN_TYPE_KEYWORD:
+    preprocessor_handle_keyword(compiler, token);
     break;
 
   default:
