@@ -1,6 +1,3 @@
-#define ABC !1
-#if ABC > 0
-#error "ABC > 0"
-#endif
+#define ABC (1 + 2 * (9 - 3))
 
-int main() { return !0; }
+int main() { return ABC; }

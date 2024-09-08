@@ -1356,6 +1356,11 @@ int preprocessor_evaluate_unary(struct compile_process *compiler,
   return res;
 }
 
+int preprocessor_evaluate_parentheses(struct compile_process *compiler,
+                                      struct preprocessor_node *node) {
+  return preprocessor_evaluate(compiler, node->paren_node.exp);
+}
+
 int preprocessor_evaluate(struct compile_process *compiler,
                           struct preprocessor_node *root_node) {
   struct preprocessor_node *current = root_node;
@@ -1375,6 +1380,10 @@ int preprocessor_evaluate(struct compile_process *compiler,
 
   case PREPROCESSOR_UNARY_NODE:
     res = preprocessor_evaluate_unary(compiler, current);
+    break;
+
+  case PREPROCESSOR_PARENTHESES_NODE:
+    res = preprocessor_evaluate_parentheses(compiler, current);
     break;
   }
 
