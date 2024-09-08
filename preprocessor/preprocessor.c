@@ -1361,6 +1361,56 @@ int preprocessor_evaluate_parentheses(struct compile_process *compiler,
   return preprocessor_evaluate(compiler, node->paren_node.exp);
 }
 
+const char *preprocessor_pull_string_from(struct preprocessor_node *node) {
+  const char *res = NULL;
+  switch (node->type) {
+  case PREPROCESSOR_PARENTHESES_NODE:
+    res = preprocessor_pull_string_from(node->paren_node.exp);
+    break;
+
+  case PREPROCESSOR_KEYWORD_NODE:
+  case PREPROCESSOR_IDENTIFIER_NODE:
+    res = node->sval;
+    break;
+
+  case PREPROCESSOR_EXPRESSION_NODE:
+    res = preprocessor_pull_string_from(node->exp.left);
+    break;
+  }
+
+  return res;
+}
+
+const char *preprocessor_pull_defined_value(struct compile_process *compiler,
+                                            struct preprocessor_node *node) {
+  const char *val = preprocessor_pull_string_from(node->joined_node.right);
+  if (!val) {
+    compiler_error(compiler, "expected identifier");
+  }
+
+  return val;
+}
+
+int preprocessor_evaluate_joined_node_defined(struct compile_process *compiler,
+                                              struct preprocessor_node *node) {
+  const char *right_val = preprocessor_pull_defined_value(compiler, node);
+  return preprocessor_get_definition(compiler->preprocessor, right_val) != NULL;
+}
+
+int preprocessor_evaluate_joined_node(struct compile_process *compiler,
+                                      struct preprocessor_node *node) {
+  if (node->joined_node.left->type != PREPROCESSOR_KEYWORD_NODE) {
+    return 0;
+  }
+
+  int res = 0;
+  if (S_EQ(node->joined_node.left->sval, "defined")) {
+    res = preprocessor_evaluate_joined_node_defined(compiler, node);
+  }
+
+  return res;
+}
+
 int preprocessor_evaluate(struct compile_process *compiler,
                           struct preprocessor_node *root_node) {
   struct preprocessor_node *current = root_node;
@@ -1384,6 +1434,10 @@ int preprocessor_evaluate(struct compile_process *compiler,
 
   case PREPROCESSOR_PARENTHESES_NODE:
     res = preprocessor_evaluate_parentheses(compiler, current);
+    break;
+
+  case PREPROCESSOR_JOINED_NODE:
+    res = preprocessor_evaluate_joined_node(compiler, current);
     break;
   }
 
