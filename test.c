@@ -1,3 +1,5 @@
-#define ABC 0 ? 2 : 3
+#define TEST(a, b) a##b
 
-int main() { return ABC; }
+int printf(const char *fmt, ...);
+
+int main() { printf("%i", TEST(20, 30)); }

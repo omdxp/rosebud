@@ -1,5 +1,6 @@
 #ifndef ROSEBUDCOMPILER_H
 #define ROSEBUDCOMPILER_H
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +13,7 @@
       ? size + (C_STACK_ALIGNMENT - (size % C_STACK_ALIGNMENT))                \
       : size
 #define PATH_MAX 4096
+#define FAIL_ERR(msg) assert(0 == 1 && msg)
 
 struct pos {
   int line;
@@ -1146,6 +1148,8 @@ bool keyword_is_datatype(const char *keyword);
 bool token_is_primitive_keyword(struct token *token);
 bool token_is_operator(struct token *token, const char *value);
 bool is_operator_token(struct token *token);
+struct vector *tokens_join_vector(struct compile_process *compiler,
+                                  struct vector *token_vec);
 
 bool datatype_is_struct_or_union_for_name(const char *name);
 bool datatype_is_struct_or_union(struct datatype *dtype);
