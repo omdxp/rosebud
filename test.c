@@ -1,3 +1,6 @@
-#define ABC 10
+#define SUM(a, b) a + b
 
-int x = ABC;
+int main(int argc, char **argv) {
+  argc = SUM(1, 2);
+  return 0;
+}

@@ -94,6 +94,9 @@ int preprocessor_evaluate(struct compile_process *compiler,
                           struct preprocessor_node *root_node);
 int preprocessor_parse_evaluate(struct compile_process *compiler,
                                 struct vector *token_vec);
+int preprocessor_handle_identifier_for_token_vector(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *dst_vec, struct token *token);
 
 struct preprocessor_included_file *
 preprocessor_add_included_file(struct preprocessor *preprocessor,
@@ -944,7 +947,12 @@ void preprocessor_token_vec_push_src_resolve_definition(
     struct compile_process *compiler, struct vector *src_vec,
     struct vector *dst_vec, struct token *token) {
 #warning "handle typedef"
-#warning "handle identifiers"
+
+  if (token->type == TOKEN_TYPE_IDENTIFIER) {
+    preprocessor_handle_identifier_for_token_vector(compiler, src_vec, dst_vec,
+                                                    token);
+    return;
+  }
 
   preprocessor_token_vec_push_src_token_to_dst(compiler, token, dst_vec);
 }
@@ -994,7 +1002,12 @@ void preprocessor_macro_function_push_something(
     struct preprocessor_function_args *args, struct token *arg_token,
     struct vector *def_token_vec, struct vector *value_vec_target) {
 #warning "process concat"
-  vector_push(value_vec_target, arg_token);
+
+  int res = preprocessor_macro_function_push_something_definition(
+      compiler, def, args, arg_token, def_token_vec, value_vec_target);
+  if (res == -1) {
+    vector_push(value_vec_target, arg_token);
+  }
 }
 
 int preprocessor_macro_function_execute(struct compile_process *compiler,
@@ -1055,7 +1068,7 @@ int preprocessor_evaluate_function_call(struct compile_process *compiler,
 int preprocessor_evaluate_exp(struct compile_process *compiler,
                               struct preprocessor_node *node) {
   if (preprocessor_exp_is_macro_function_call(node)) {
-#warning "handle macro function call"
+    return preprocessor_evaluate_function_call(compiler, node);
   }
 
   long left_operand = preprocessor_evaluate(compiler, node->exp.left);
@@ -1170,6 +1183,91 @@ void preprocessor_handle_symbol(struct compile_process *compiler,
   }
 }
 
+struct token *preprocessor_handle_identifier_macro_call_arg_parse_paren(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *value_vec, struct preprocessor_function_args *args,
+    struct token *left_paren_token) {
+  // push left paren
+  vector_push(value_vec, left_paren_token);
+
+  struct token *next_token = vector_peek(src_vec);
+  while (next_token && !token_is_symbol(next_token, ')')) {
+    if (token_is_operator(next_token, "(")) {
+      next_token = preprocessor_handle_identifier_macro_call_arg_parse_paren(
+          compiler, src_vec, value_vec, args, next_token);
+    }
+
+    vector_push(value_vec, next_token);
+    next_token = vector_peek(src_vec);
+  }
+
+  if (!next_token) {
+    compiler_error(compiler, "expected )");
+  }
+
+  vector_push(value_vec, next_token);
+
+  return vector_peek(src_vec);
+}
+
+void preprocessor_function_argument_push(
+    struct preprocessor_function_args *args, struct vector *value_vec) {
+  struct preprocessor_function_arg arg;
+  arg.tokens = vector_clone(value_vec);
+  vector_push(args->args, &arg);
+}
+
+void preprocessor_handle_identifier_macro_call_arg(
+    struct preprocessor_function_args *args, struct vector *token_vec) {
+  preprocessor_function_argument_push(args, token_vec);
+}
+
+struct token *preprocessor_handle_identifier_macro_call_arg_parse(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *value_vec, struct preprocessor_function_args *args,
+    struct token *token) {
+  if (token_is_operator(token, "(")) {
+    return preprocessor_handle_identifier_macro_call_arg_parse_paren(
+        compiler, src_vec, value_vec, args, token);
+  }
+
+  if (token_is_symbol(token, ')')) {
+    // end of arguments
+    preprocessor_handle_identifier_macro_call_arg(args, value_vec);
+    return NULL;
+  }
+
+  if (token_is_operator(token, ",")) {
+    // next argument
+    preprocessor_handle_identifier_macro_call_arg(args, value_vec);
+    vector_clear(value_vec);
+    return vector_peek(src_vec);
+  }
+
+  vector_push(value_vec, token);
+  token = vector_peek(src_vec);
+  return token;
+}
+
+struct preprocessor_function_args *
+preprocessor_handle_identifier_macro_call_args(struct compile_process *compiler,
+                                               struct vector *src_vec) {
+  // skip (
+  vector_peek(src_vec);
+
+  struct preprocessor_function_args *args = preprocessor_function_args_create();
+  struct token *token = vector_peek(src_vec);
+  struct vector *value_vec = vector_create(sizeof(struct token));
+  while (token) {
+    token = preprocessor_handle_identifier_macro_call_arg_parse(
+        compiler, src_vec, value_vec, args, token);
+  }
+
+  vector_free(value_vec);
+
+  return args;
+}
+
 int preprocessor_handle_identifier_for_token_vector(
     struct compile_process *compiler, struct vector *src_vec,
     struct vector *dst_vec, struct token *token) {
@@ -1188,9 +1286,11 @@ int preprocessor_handle_identifier_for_token_vector(
   }
 
   if (token_is_operator(vector_peek_no_increment(src_vec), "(")) {
-#warning "handle macro function"
-    // struct preprocessor_function_args *args =
-    //     preprocessor_handle_identifier_macro_call_args(compiler, src_vec);
+    struct preprocessor_function_args *args =
+        preprocessor_handle_identifier_macro_call_args(compiler, src_vec);
+    const char *func_name = token->sval;
+    preprocessor_macro_function_execute(compiler, func_name, args, 0);
+    return 0;
   }
 
   struct vector *def_val = preprocessor_definition_value(def);
