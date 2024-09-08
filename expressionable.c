@@ -306,7 +306,7 @@ void expressionable_parse_parentheses(struct expressionable *expressionable) {
 
 void expressionable_parse_for_normal_unary(
     struct expressionable *expressionable) {
-  const char *unary_op = expressionable_peek_next(expressionable)->sval;
+  const char *unary_op = expressionable_token_next(expressionable)->sval;
   expressionable_parse(expressionable);
 
   void *unary_operand_node = expressionable_node_pop(expressionable);

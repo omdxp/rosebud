@@ -1,8 +1,6 @@
-#define TEST_FUNC(s) #s
+#define ABC !1
+#if ABC > 0
+#error "ABC > 0"
+#endif
 
-int printf(const char *format, ...);
-
-int main() {
-  const char *s = TEST_FUNC(Hello World !);
-  printf("%s\n", s);
-}
+int main() { return !0; }

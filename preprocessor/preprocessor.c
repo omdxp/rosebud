@@ -1338,6 +1338,24 @@ int preprocessor_evaluate_exp(struct compile_process *compiler,
                                  node->exp.op);
 }
 
+int preprocessor_evaluate_unary(struct compile_process *compiler,
+                                struct preprocessor_node *node) {
+  int res = 0;
+  const char *op = node->unary_node.op;
+  struct preprocessor_node *right_operand = node->unary_node.operand;
+  if (S_EQ(op, "!")) {
+    res = !preprocessor_evaluate(compiler, right_operand);
+  } else if (S_EQ(op, "~")) {
+    res = ~preprocessor_evaluate(compiler, right_operand);
+  } else if (S_EQ(op, "-")) {
+    res = -preprocessor_evaluate(compiler, right_operand);
+  } else {
+    compiler_error(compiler, "unknown unary operator");
+  }
+
+  return res;
+}
+
 int preprocessor_evaluate(struct compile_process *compiler,
                           struct preprocessor_node *root_node) {
   struct preprocessor_node *current = root_node;
@@ -1353,6 +1371,10 @@ int preprocessor_evaluate(struct compile_process *compiler,
 
   case PREPROCESSOR_EXPRESSION_NODE:
     res = preprocessor_evaluate_exp(compiler, current);
+    break;
+
+  case PREPROCESSOR_UNARY_NODE:
+    res = preprocessor_evaluate_unary(compiler, current);
     break;
   }
 
