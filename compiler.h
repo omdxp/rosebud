@@ -106,6 +106,9 @@ struct token {
 
   // (5+10+20)
   const char *between_brackets;
+
+  // TEST(test hello, 50)
+  const char *between_args;
 };
 
 struct lex_process;
@@ -128,6 +131,9 @@ struct lex_process {
    */
   int current_expression_count;
   struct buffer *parenthesis_buffer;
+
+  // TEST(hello test, 50)
+  struct buffer *arg_string_buffer;
   struct lex_process_functions *function;
 
   // This will be private data that the lexer does not understand

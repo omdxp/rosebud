@@ -26,6 +26,9 @@ static char nextc() {
   // write paranethesis to an expression buffer (.e.g (20 + 10))
   if (lex_is_in_expression()) {
     buffer_write(lex_process->parenthesis_buffer, c);
+    if (lex_process->arg_string_buffer) {
+      buffer_write(lex_process->arg_string_buffer, c);
+    }
   }
 
   lex_process->pos.col += 1;
@@ -51,7 +54,11 @@ struct token *token_create(struct token *_token) {
   memcpy(&tmp_token, _token, sizeof(struct token));
   tmp_token.pos = lex_file_position();
   if (lex_is_in_expression()) {
+    assert(lex_process->parenthesis_buffer);
     tmp_token.between_brackets = buffer_ptr(lex_process->parenthesis_buffer);
+    if (lex_process->arg_string_buffer) {
+      tmp_token.between_args = buffer_ptr(lex_process->arg_string_buffer);
+    }
   }
   return &tmp_token;
 }
@@ -228,6 +235,12 @@ static void lex_new_expression() {
   if (lex_process->current_expression_count == 1) {
     lex_process->parenthesis_buffer = buffer_create();
   }
+
+  struct token *last_token = lexer_last_token();
+  if (last_token && (last_token->type == TOKEN_TYPE_IDENTIFIER ||
+                     token_is_operator(last_token, ","))) {
+    lex_process->arg_string_buffer = buffer_create();
+  }
 }
 
 static void lex_finish_expression() {
@@ -330,10 +343,12 @@ struct token *handle_comment() {
 }
 
 static struct token *token_make_symbol() {
-  char c = nextc();
+  char c = peekc();
   if (c == ')') {
     lex_finish_expression();
   }
+
+  nextc();
 
   struct token *token =
       token_create(&(struct token){.type = TOKEN_TYPE_SYMBOL, .cval = c});
@@ -536,6 +551,7 @@ struct token *read_next_token() {
 int lex(struct lex_process *process) {
   process->current_expression_count = 0;
   process->parenthesis_buffer = NULL;
+  process->arg_string_buffer = NULL;
   lex_process = process;
   process->pos.filename = process->compiler->cfile.abs_path;
 

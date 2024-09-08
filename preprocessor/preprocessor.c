@@ -1231,6 +1231,36 @@ void preprocessor_macro_function_push_something(
   }
 }
 
+void preprocessor_handle_function_arg_to_string(
+    struct compile_process *compiler, struct vector *src_vec,
+    struct vector *value_vec_target, struct preprocessor_definition *def,
+    struct preprocessor_function_args *args) {
+  struct token *next_token = vector_peek(src_vec);
+  if (!next_token || next_token->type != TOKEN_TYPE_IDENTIFIER) {
+    compiler_error(compiler, "expected identifier");
+  }
+
+  int arg_index =
+      preprocessor_definition_argument_exists(def, next_token->sval);
+  if (arg_index < 0) {
+    compiler_error(compiler, "argument not found");
+  }
+
+  struct preprocessor_function_arg *arg =
+      preprocessor_function_argument_at(args, arg_index);
+  if (!arg) {
+    compiler_error(compiler, "argument not found");
+  }
+
+  struct token *first_token_for_argument = vector_peek_at(arg->tokens, 0);
+
+  // create string token
+  struct token str_token;
+  str_token.type = TOKEN_TYPE_STRING;
+  str_token.sval = first_token_for_argument->between_brackets;
+  vector_push(value_vec_target, &str_token);
+}
+
 int preprocessor_macro_function_execute(struct compile_process *compiler,
                                         const char *func_name,
                                         struct preprocessor_function_args *args,
@@ -1259,7 +1289,13 @@ int preprocessor_macro_function_execute(struct compile_process *compiler,
   vector_set_peek_pointer(def_token_vec, 0);
   struct token *token = vector_peek(def_token_vec);
   while (token) {
-#warning "impl strings"
+    if (token_is_symbol(token, '#')) {
+      preprocessor_handle_function_arg_to_string(compiler, def_token_vec,
+                                                 value_vec_target, def, args);
+      token = vector_peek(def_token_vec);
+      continue;
+    }
+
     preprocessor_macro_function_push_something(compiler, def, args, token,
                                                def_token_vec, value_vec_target);
     token = vector_peek(def_token_vec);

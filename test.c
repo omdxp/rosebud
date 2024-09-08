@@ -1,6 +1,8 @@
-typedef struct ab {
-  int a;
-  int b;
-} ab;
+#define TEST_FUNC(s) #s
 
-ab a;
+int printf(const char *format, ...);
+
+int main() {
+  const char *s = TEST_FUNC(Hello World !);
+  printf("%s\n", s);
+}
