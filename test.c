@@ -1,1 +1,11 @@
-void test(int x) { return 0; }
+struct abc {
+  int a;
+  int b;
+  int c;
+};
+
+struct abc {
+  int a;
+  int b;
+  int c;
+};
