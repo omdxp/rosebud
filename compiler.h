@@ -413,6 +413,8 @@ struct compile_process {
 
 enum { PARSE_ALL_OK, PARSE_GENERAL_ERROR };
 
+enum { VALIDATION_ALL_OK, VALIDATION_GENERAL_ERROR };
+
 enum { CODEGEN_ALL_OK, CODEGEN_GENERAL_ERROR };
 
 enum {
@@ -1664,5 +1666,7 @@ struct preprocessor_definition *preprocessor_definition_create_native(
     PREPROCESSOR_DEFINITION_NATIVE_CALL_VALUE value,
     struct preprocessor *preprocessor);
 void preprocessor_create_defs(struct preprocessor *preprocessor);
+
+int validate(struct compile_process *process);
 
 #endif

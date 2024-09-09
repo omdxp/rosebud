@@ -1,8 +1,11 @@
-OBJECTS= ./build/stddef.o ./build/stdarg.o ./build/static_include.o ./build/native.o ./build/preprocessor.o ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
+OBJECTS= ./build/validator.o ./build/stddef.o ./build/stdarg.o ./build/static_include.o ./build/native.o ./build/preprocessor.o ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
 INCLUDES= -I./
 
 all: ${OBJECTS}
 	gcc main.c ${INCLUDES} ${OBJECTS} -g -o ./main
+
+./build/validator.o: ./validator.c
+	gcc ./validator.c ${INCLUDES} -o ./build/validator.o -g -c
 
 ./build/stddef.o: ./preprocessor/static_includes/stddef.c
 	gcc ./preprocessor/static_includes/stddef.c ${INCLUDES} -o ./build/stddef.o -g -c
