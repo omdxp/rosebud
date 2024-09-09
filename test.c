@@ -1,1 +1,6 @@
-#include <stdarg_internal.h>
+struct abc {
+  int x;
+  int y;
+};
+
+int main() { return sizeof(struct abc); }
