@@ -105,3 +105,8 @@ void datatype_set_void(struct datatype *dtype) {
   dtype->type_str = "void";
   dtype->size = 0;
 }
+
+bool datatype_is_void_no_ptr(struct datatype *dtype) {
+  return dtype->type == DATA_TYPE_VOID &&
+         !(dtype->flags & DATATYPE_FLAG_IS_POINTER);
+}

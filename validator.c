@@ -4,6 +4,9 @@
 static struct compile_process *validator_current_compile_process;
 static struct node *current_function;
 
+void validate_variable(struct node *var_node);
+void validate_body(struct body *body);
+
 void validation_new_scope(int flags) {
   resolver_default_new_scope(validator_current_compile_process->resolver,
                              flags);
@@ -37,11 +40,107 @@ void validate_symbol_unique(const char *name, const char *type,
   }
 }
 
+void validate_identifier(struct node *node) {
+  struct resolver_result *result =
+      resolver_follow(validator_current_compile_process->resolver, node);
+  if (!resolver_result_ok(result)) {
+    compiler_error(validator_current_compile_process, "identifier %s not found",
+                   node->sval);
+  }
+}
+
+void validate_expressionable(struct node *node) {
+  switch (node->type) {
+  case NODE_TYPE_IDENTIFIER:
+    validate_identifier(node);
+    break;
+  }
+}
+
+void validate_return_node(struct node *node) {
+  if (node->stmt.return_stmt.exp) {
+    if (datatype_is_void_no_ptr(&current_function->func.rtype)) {
+      compiler_node_error(node, "returning value from void function");
+    }
+
+    validate_expressionable(node->stmt.return_stmt.exp);
+  }
+}
+
+void validate_if_stmt(struct node *node) {
+  validation_new_scope(0);
+  validate_expressionable(node->stmt.if_stmt.cond_node);
+  validate_body(&node->stmt.if_stmt.body_node->body);
+  validation_finish_scope();
+}
+
+void validate_for_stmt(struct node *node) {
+  validation_new_scope(0);
+  validate_expressionable(node->stmt.for_stmt.init);
+  validate_expressionable(node->stmt.for_stmt.cond);
+  validate_expressionable(node->stmt.for_stmt.inc);
+  validate_body(&node->stmt.for_stmt.body->body);
+  validation_finish_scope();
+}
+
+void validate_while_stmt(struct node *node) {
+  validation_new_scope(0);
+  validate_expressionable(node->stmt.while_stmt.cond);
+  validate_body(&node->stmt.while_stmt.body->body);
+  validation_finish_scope();
+}
+
+void validate_do_while_stmt(struct node *node) {
+  validation_new_scope(0);
+  validate_expressionable(node->stmt.do_while_stmt.cond);
+  validate_body(&node->stmt.do_while_stmt.body->body);
+  validation_finish_scope();
+}
+
+void validate_switch_stmt(struct node *node) {
+  validation_new_scope(0);
+  validate_expressionable(node->stmt.switch_stmt.exp);
+  validate_body(&node->stmt.switch_stmt.body->body);
+  validation_finish_scope();
+}
+
+void validate_statement(struct node *node) {
+  switch (node->type) {
+  case NODE_TYPE_VARIABLE:
+    validate_variable(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_RETURN:
+    validate_return_node(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_IF:
+    validate_if_stmt(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_FOR:
+    validate_for_stmt(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_WHILE:
+    validate_while_stmt(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_DO_WHILE:
+    validate_do_while_stmt(node);
+    break;
+
+  case NODE_TYPE_STATEMENT_SWITCH:
+    validate_switch_stmt(node);
+    break;
+  }
+}
+
 void validate_body(struct body *body) {
   vector_set_peek_pointer(body->statements, 0);
   struct node *statement = vector_peek_ptr(body->statements);
   while (statement) {
-    // validate statement
+    validate_statement(statement);
     statement = vector_peek_ptr(body->statements);
   }
 }

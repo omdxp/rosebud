@@ -1,1 +1,1 @@
-int test(int x, int x) { return 0; }
+void test(int x) { return 0; }
