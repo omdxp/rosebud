@@ -1,6 +1,8 @@
+#include <stddef.h>
+
 struct abc {
-  int x;
-  int y;
+  int a;
+  int b;
 };
 
-int main() { return &((struct abc *)0x00)->y; }
+int main() { return offsetof(struct abc, b); }
