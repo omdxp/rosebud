@@ -3,6 +3,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+const char *default_include_dirs[] = {"./rc_includes", "../rc_includes",
+                                      "/usr/include/rosebud_includes",
+                                      "/usr/include"};
+
+const char *compiler_include_dir_begin(struct compile_process *process) {
+  vector_set_peek_pointer(process->include_dirs, 0);
+  const char *dir = vector_peek_ptr(process->include_dirs);
+  return dir;
+}
+
+const char *compiler_include_dir_next(struct compile_process *process) {
+  const char *dir = vector_peek_ptr(process->include_dirs);
+  return dir;
+}
+
+void compiler_setup_default_include_dir(struct vector *include_dirs) {
+  size_t total = sizeof(default_include_dirs) / sizeof(const char *);
+  for (size_t i = 0; i < total; i++) {
+    const char *dir = default_include_dirs[i];
+    vector_push(include_dirs, &dir);
+  }
+}
+
 struct compile_process *
 compile_process_create(const char *filename, const char *filename_out,
                        int flags, struct compile_process *parent_process) {
@@ -40,7 +63,9 @@ compile_process_create(const char *filename, const char *filename_out,
   } else {
     process->preprocessor = preprocessor_create(process);
     process->include_dirs = vector_create(sizeof(const char *));
-    // setup default include directories
+
+    // laod default include dirs
+    compiler_setup_default_include_dir(process->include_dirs);
   }
 
   return process;

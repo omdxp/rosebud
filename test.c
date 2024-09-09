@@ -1,9 +1,1 @@
-/*
-
-
-
-*/
-
-int x = __LINE__;
-
-int main() { return __LINE__; }
+#include <stdarg_internal.h>

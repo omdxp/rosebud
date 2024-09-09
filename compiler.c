@@ -26,6 +26,54 @@ void compiler_warning(struct compile_process *compiler, const char *msg, ...) {
           compiler->pos.col, compiler->pos.filename);
 }
 
+struct compile_process *
+compile_include_for_include_dir(const char *include_dir, const char *filename,
+                                struct compile_process *parent_process) {
+  char tmp_filename[512];
+  sprintf(tmp_filename, "%s/%s", include_dir, filename);
+  if (file_exists(tmp_filename)) {
+    filename = tmp_filename;
+  }
+
+  struct compile_process *new_process = compile_process_create(
+      filename, NULL, parent_process->flags, parent_process);
+  if (!new_process) {
+    return NULL;
+  }
+
+  struct lex_process *lex_process =
+      lex_process_create(new_process, &compiler_lex_functions, NULL);
+  if (!lex_process) {
+    return NULL;
+  }
+
+  if (lex(lex_process) != LEXICAL_ANALYSIS_ALL_OK) {
+    return NULL;
+  }
+
+  new_process->token_vec_original = lex_process_tokens(lex_process);
+
+  if (preprocessor_run(new_process) != PREPROCESS_ALL_OK) {
+    return NULL;
+  }
+
+  return new_process;
+}
+
+// Compile include file with only lexing and preprocessing
+struct compile_process *
+compile_include(const char *filename, struct compile_process *parent_process) {
+  struct compile_process *new_process = NULL;
+  const char *include_dir = compiler_include_dir_begin(parent_process);
+  while (include_dir && !new_process) {
+    new_process =
+        compile_include_for_include_dir(include_dir, filename, parent_process);
+    include_dir = compiler_include_dir_next(parent_process);
+  }
+
+  return new_process;
+}
+
 int compile_file(const char *filename, const char *out_filename, int flags) {
   struct compile_process *process =
       compile_process_create(filename, out_filename, flags, NULL);

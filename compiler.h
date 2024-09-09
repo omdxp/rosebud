@@ -288,6 +288,12 @@ struct preprocessor_included_file {
   char filename[PATH_MAX];
 };
 
+typedef void (*PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION)(
+    struct preprocessor *preprocessor,
+    struct preprocessor_included_file *included_file);
+PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION
+preprocessor_static_include_handler_for(const char *filename);
+
 struct preprocessor {
   // vector of struct_definition*
   struct vector *defs;
@@ -1123,6 +1129,12 @@ char compile_process_next_char(struct lex_process *lex_process);
 char compile_process_peek_char(struct lex_process *lex_process);
 void compile_process_push_char(struct lex_process *lex_process, char c);
 
+const char *compiler_include_dir_begin(struct compile_process *process);
+const char *compiler_include_dir_next(struct compile_process *process);
+void compiler_setup_default_include_dir(struct vector *include_dirs);
+struct compile_process *compile_include(const char *filename,
+                                        struct compile_process *parent_process);
+
 void compiler_error(struct compile_process *compiler, const char *msg, ...);
 void compiler_warning(struct compile_process *compiler, const char *msg, ...);
 
@@ -1176,6 +1188,7 @@ bool unary_operand_compatible(struct token *token);
 void datatype_decrement_pointer(struct datatype *dtype);
 long arithmetic(struct compile_process *compiler, long left, long right,
                 const char *op, bool *success);
+bool file_exists(const char *filename);
 
 size_t datatype_size_for_array_access(struct datatype *dtype);
 size_t datatype_element_size(struct datatype *dtype);

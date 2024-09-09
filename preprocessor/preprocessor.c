@@ -569,6 +569,14 @@ bool preprocessor_token_is_typedef(struct token *token) {
   return S_EQ(token->sval, "typedef");
 }
 
+bool preprocessor_token_is_include(struct token *token) {
+  if (!preprocessor_token_is_preprocessor_keyword(token)) {
+    return false;
+  }
+
+  return S_EQ(token->sval, "include");
+}
+
 struct buffer *
 preprocessor_multi_value_string(struct compile_process *compiler) {
   struct buffer *str_buf = buffer_create();
@@ -1582,6 +1590,40 @@ void preprocessor_handle_ifndef_token(struct compile_process *compiler) {
   preprocessor_read_to_endif(compiler, def == NULL);
 }
 
+struct token *
+preprocessor_next_token_skip_nl(struct compile_process *compiler) {
+  struct token *token = preprocessor_next_token(compiler);
+  while (token && token->type == TOKEN_TYPE_NEWLINE) {
+    token = preprocessor_next_token(compiler);
+  }
+
+  return token;
+}
+
+void preprocessor_handle_include_token(struct compile_process *compiler) {
+  struct token *file_path_token = preprocessor_next_token_skip_nl(compiler);
+  if (!file_path_token) {
+    compiler_error(compiler, "expected file path");
+  }
+
+  struct compile_process *new_compile_process =
+      compile_include(file_path_token->sval, compiler);
+  if (!new_compile_process) {
+    PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION handler =
+        preprocessor_static_include_handler_for(file_path_token->sval);
+    if (handler) {
+      // handle static include
+      preprocessor_create_static_include(compiler->preprocessor,
+                                         file_path_token->sval, handler);
+      return;
+    }
+
+    compiler_error(compiler, "failed to include file");
+  }
+
+  preprocessor_token_vec_push_src(compiler, new_compile_process->token_vec);
+}
+
 int preprocessor_handle_hashtag_token(struct compile_process *compiler,
                                       struct token *token) {
   bool is_preprocessed = false;
@@ -1606,6 +1648,9 @@ int preprocessor_handle_hashtag_token(struct compile_process *compiler,
     is_preprocessed = true;
   } else if (preprocessor_token_is_if(next_token)) {
     preprocessor_handle_if_token(compiler);
+    is_preprocessed = true;
+  } else if (preprocessor_token_is_include(next_token)) {
+    preprocessor_handle_include_token(compiler);
     is_preprocessed = true;
   }
 

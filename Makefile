@@ -1,8 +1,17 @@
-OBJECTS= ./build/native.o ./build/preprocessor.o ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
+OBJECTS= ./build/stddef.o ./build/stdarg.o ./build/static_include.o ./build/native.o ./build/preprocessor.o ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
 INCLUDES= -I./
 
 all: ${OBJECTS}
 	gcc main.c ${INCLUDES} ${OBJECTS} -g -o ./main
+
+./build/stddef.o: ./preprocessor/static_includes/stddef.c
+	gcc ./preprocessor/static_includes/stddef.c ${INCLUDES} -o ./build/stddef.o -g -c
+
+./build/stdarg.o: ./preprocessor/static_includes/stdarg.c
+	gcc ./preprocessor/static_includes/stdarg.c ${INCLUDES} -o ./build/stdarg.o -g -c
+
+./build/static_include.o: ./preprocessor/static_include.c
+	gcc ./preprocessor/static_include.c ${INCLUDES} -o ./build/static_include.o -g -c
 
 ./build/native.o: ./preprocessor/native.c
 	gcc ./preprocessor/native.c ${INCLUDES} -o ./build/native.o -g -c
