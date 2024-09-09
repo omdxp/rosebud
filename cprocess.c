@@ -68,6 +68,11 @@ compile_process_create(const char *filename, const char *filename_out,
     compiler_setup_default_include_dir(process->include_dirs);
   }
 
+  char *path = malloc(PATH_MAX);
+  realpath(filename, path);
+  process->cfile.abs_path = path;
+  node_set_vector(process->node_vec, process->node_tree_vec);
+
   return process;
 }
 

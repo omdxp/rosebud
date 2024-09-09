@@ -1828,7 +1828,8 @@ void preprocessor_handle_token(struct compile_process *compiler,
 }
 
 int preprocessor_run(struct compile_process *compiler) {
-#warning "add source file as an included file"
+  preprocessor_add_included_file(compiler->preprocessor,
+                                 compiler->cfile.abs_path);
   vector_set_peek_pointer(compiler->token_vec_original, 0);
   struct token *token = preprocessor_next_token(compiler);
   while (token) {

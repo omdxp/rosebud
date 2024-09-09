@@ -11,7 +11,7 @@ PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION
 preprocessor_static_include_handler_for(const char *filename) {
   if (S_EQ(filename, "stddef_internal.h")) {
     return preprocessor_stddef_include;
-  } else if (filename, "stdarg_internal.h") {
+  } else if (S_EQ(filename, "stdarg_internal.h")) {
     return preprocessor_stdarg_include;
   }
 
