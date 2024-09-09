@@ -48,8 +48,20 @@ void validate_body(struct body *body) {
 
 void validate_function_body(struct node *node) { validate_body(&node->body); }
 
+void validate_variable(struct node *var_node) {
+  struct resolver_entity *entity = resolver_get_variable_from_local_scope(
+      validator_current_compile_process->resolver, var_node->var.name);
+  if (entity) {
+    compiler_node_error(var_node, "variable %s already defined",
+                        var_node->var.name);
+  }
+
+  resolver_default_new_scope_entity(validator_current_compile_process->resolver,
+                                    var_node, 0, 0);
+}
+
 void validate_function_arg(struct node *func_arg_var_node) {
-  // validate_variable
+  validate_variable(func_arg_var_node);
 }
 
 void validate_function_args(struct function_args *func_args) {

@@ -1596,6 +1596,9 @@ struct resolver_entity *
 resolver_result_entity_root(struct resolver_result *result);
 struct resolver_entity *resolver_entity_next(struct resolver_entity *entity);
 struct resolver_entity *resolver_result_entity(struct resolver_result *result);
+struct resolver_entity *
+resolver_get_variable_from_local_scope(struct resolver_process *process,
+                                       const char *var_name);
 
 int codegen(struct compile_process *process);
 struct code_generator *codegenerator_new(struct compile_process *process);

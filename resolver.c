@@ -590,6 +590,14 @@ struct resolver_entity *resolver_get_variable(struct resolver_result *result,
                                       RESOLVER_ENTITY_TYPE_VARIABLE);
 }
 
+struct resolver_entity *
+resolver_get_variable_from_local_scope(struct resolver_process *process,
+                                       const char *var_name) {
+  struct resolver_result *result = resolver_new_result(process);
+  return resolver_get_entity_in_scope(
+      result, process, resolver_scope_current(process), var_name);
+}
+
 struct resolver_entity *resolver_get_function_in_scope(
     struct resolver_result *result, struct resolver_process *process,
     const char *func_name, struct resolver_scope *scope) {
