@@ -628,6 +628,13 @@ resolver_follow_variable(struct resolver_process *process,
   return resolver_follow_for_name(process, var_node->var.name, result);
 }
 
+bool resolver_do_indirection(struct resolver_entity *entity) {
+  struct resolver_result *res = entity->result;
+  return entity->type != RESOLVER_ENTITY_TYPE_FUNCTION_CALL &&
+         !(res->flags & RESOLVER_RESULT_FLAG_DOES_GET_ADDRESS) &&
+         entity->type != RESOLVER_ENTITY_TYPE_CAST;
+}
+
 struct resolver_entity *
 resolver_follow_struct_expression(struct resolver_process *process,
                                   struct node *node,
@@ -847,6 +854,14 @@ struct resolver_entity *resolver_follow_cast(struct resolver_process *process,
 
   struct resolver_entity *cast_entity = resolver_create_new_cast_entity(
       process, operand_entity->scope, &node->cast.dtype);
+  if (datatype_is_struct_or_union(&node->cast.dtype)) {
+    if (!cast_entity->scope) {
+      cast_entity->scope = process->scopes.current;
+    }
+
+    result->last_struct_union_entity = cast_entity;
+  }
+
   resolver_result_entity_push(result, cast_entity);
   return cast_entity;
 }
@@ -874,6 +889,7 @@ resolver_follow_unary_address(struct resolver_process *process,
                               struct node *node,
                               struct resolver_result *result) {
   // address (e.g. &a)
+  result->flags |= RESOLVER_RESULT_FLAG_DOES_GET_ADDRESS;
   resolver_follow_part(process, node->unary.operand, result);
   struct resolver_entity *last_entity = resolver_result_peek(result);
   struct resolver_entity *unary_address_entity =

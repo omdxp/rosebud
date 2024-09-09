@@ -3,4 +3,4 @@ struct abc {
   int y;
 };
 
-int main() { return sizeof(struct abc); }
+int main() { return &((struct abc *)0x00)->y; }
