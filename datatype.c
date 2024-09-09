@@ -99,3 +99,9 @@ struct datatype *datatype_pointer_reduce(struct datatype *dtype, int by) {
 
   return new_datatype;
 }
+
+void datatype_set_void(struct datatype *dtype) {
+  dtype->type = DATA_TYPE_VOID;
+  dtype->type_str = "void";
+  dtype->size = 0;
+}

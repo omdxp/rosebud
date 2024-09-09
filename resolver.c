@@ -461,6 +461,7 @@ struct resolver_entity *resolver_create_new_entity_for_function_call(
   }
 
   entity->dtype = left_operand_entity->dtype;
+  entity->name = left_operand_entity->name;
   entity->function_call_data.args = vector_create(sizeof(struct node *));
   return entity;
 }
@@ -477,6 +478,26 @@ resolver_register_function(struct resolver_process *process,
   entity->name = func_node->func.name;
   entity->node = func_node;
   entity->dtype = func_node->func.rtype;
+  entity->scope = resolver_process_scope_current(process);
+  vector_push(process->scopes.root->entities, &entity);
+  return entity;
+}
+
+struct resolver_entity *resolver_create_new_entity_for_native_function(
+    struct resolver_process *process, const char *name,
+    struct symbol *native_func_symbol) {
+  struct resolver_entity *entity = resolver_create_new_entity(
+      NULL, RESOLVER_ENTITY_TYPE_NATIVE_FUNCTION, NULL);
+  if (!entity) {
+    return NULL;
+  }
+
+  // make void return type
+  datatype_set_void(&entity->dtype);
+  make_function_node(&entity->dtype, name, NULL, NULL);
+  entity->node = node_pop();
+  entity->name = name;
+  entity->native_func.symbol = native_func_symbol;
   entity->scope = resolver_process_scope_current(process);
   vector_push(process->scopes.root->entities, &entity);
   return entity;
@@ -572,8 +593,14 @@ struct resolver_entity *resolver_get_variable(struct resolver_result *result,
 struct resolver_entity *resolver_get_function_in_scope(
     struct resolver_result *result, struct resolver_process *process,
     const char *func_name, struct resolver_scope *scope) {
-  return resolver_get_entity_for_type(result, process, func_name,
-                                      RESOLVER_ENTITY_TYPE_FUNCTION);
+  struct resolver_entity *entity = resolver_get_entity_for_type(
+      result, process, func_name, RESOLVER_ENTITY_TYPE_FUNCTION);
+  if (!entity) {
+    entity = resolver_get_entity_for_type(result, process, func_name,
+                                          RESOLVER_ENTITY_TYPE_NATIVE_FUNCTION);
+  }
+
+  return entity;
 }
 
 struct resolver_entity *resolver_get_function(struct resolver_result *result,
@@ -614,6 +641,16 @@ resolver_follow_identifier(struct resolver_process *process, struct node *node,
                            struct resolver_result *result) {
   struct resolver_entity *entity =
       resolver_follow_for_name(process, node->sval, result);
+  if (!entity) {
+    struct symbol *symbol = symresolver_get_symbol_for_native_function(
+        process->compile_process, node->sval);
+    if (symbol) {
+      entity = resolver_create_new_entity_for_native_function(
+          process, node->sval, symbol);
+      resolver_result_entity_push(result, entity);
+    }
+  }
+
   if (entity) {
     entity->last_resolve.referencing_node = node;
   }

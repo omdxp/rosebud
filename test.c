@@ -1,8 +1,3 @@
-#include <stddef.h>
+#include <stdarg_internal.h>
 
-struct abc {
-  int a;
-  int b;
-};
-
-int main() { return offsetof(struct abc, b); }
+int main() { test(); }

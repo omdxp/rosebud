@@ -294,6 +294,61 @@ typedef void (*PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION)(
 PREPROCESSOR_STATIC_INCLUDE_HANDLER_POST_CREATION
 preprocessor_static_include_handler_for(const char *filename);
 
+struct generator;
+struct native_function;
+struct node;
+struct resolver_entity;
+struct datatype;
+struct generator_entity_address {
+  bool is_stack;
+  long offset;
+  const char *address;
+  const char *base_address;
+};
+
+#define GENERATOR_BEGIN_EXPRESSION(gen)
+#define GENERATOR_END_EXPRESSION(gen) (gen)->end_expression(gen)
+
+typedef void (*ASM_PUSH_PROTOTYPE)(const char *ins, ...);
+typedef void (*NATIVE_FUNCTION_CALL)(struct generator *generator,
+                                     struct native_function *func,
+                                     struct vector *args);
+typedef void (*GENERATOR_GENERATE_EXPRESSION)(struct generator *generator,
+                                              struct node *node, int flags);
+typedef void (*GENERATOR_ENTITY_ADDRESS)(
+    struct generator *generator, struct resolver_entity *entity,
+    struct generator_entity_address *address_out);
+typedef void (*GENERATOR_END_EXPRESSION)(struct generator *generator);
+typedef void (*GENERATOR_FUNCTION_RETURN)(struct datatype *dtype,
+                                          const char *fmt, ...);
+
+struct generator {
+  ASM_PUSH_PROTOTYPE asm_push;
+  GENERATOR_GENERATE_EXPRESSION generate_expression;
+  GENERATOR_END_EXPRESSION end_expression;
+  GENERATOR_ENTITY_ADDRESS entity_address;
+  GENERATOR_FUNCTION_RETURN ret;
+
+  struct compile_process *compiler;
+
+  void *private;
+};
+
+struct native_function_callbacks {
+  NATIVE_FUNCTION_CALL call;
+};
+
+struct native_function {
+  const char *name;
+  struct native_function_callbacks callbacks;
+};
+
+struct symbol *
+native_create_function(struct compile_process *compiler, const char *name,
+                       struct native_function_callbacks *callbacks);
+struct native_function *native_function_get(struct compile_process *compiler,
+                                            const char *name);
+
 struct preprocessor {
   // vector of struct_definition*
   struct vector *defs;
@@ -741,6 +796,7 @@ enum {
 enum {
   RESOLVER_ENTITY_TYPE_VARIABLE,
   RESOLVER_ENTITY_TYPE_FUNCTION,
+  RESOLVER_ENTITY_TYPE_NATIVE_FUNCTION,
   RESOLVER_ENTITY_TYPE_STRUCT,
   RESOLVER_ENTITY_TYPE_FUNCTION_CALL,
   RESOLVER_ENTITY_TYPE_ARRAY_BRACKET,
@@ -981,6 +1037,11 @@ struct resolver_entity {
       // depth of the indirection
       int depth;
     } indirection;
+
+    struct resolver_native_function {
+      // native function symbol
+      struct symbol *symbol;
+    } native_func;
   };
 
   // last resolver entity
@@ -1172,6 +1233,7 @@ struct datatype datatype_for_string();
 struct datatype *datatype_thats_a_pointer(struct datatype *d1,
                                           struct datatype *d2);
 struct datatype *datatype_pointer_reduce(struct datatype *dtype, int by);
+void datatype_set_void(struct datatype *dtype);
 
 bool is_access_operator(const char *op);
 bool is_access_node(struct node *node);
@@ -1321,6 +1383,9 @@ struct symbol *symresolver_get_symbol(struct compile_process *process,
 struct symbol *
 symresolver_get_symbol_for_native_function(struct compile_process *process,
                                            const char *name);
+struct symbol *symresolver_register_symbol(struct compile_process *process,
+                                           const char *sym_name, int type,
+                                           void *data);
 
 #define TOTAL_OPERATOR_GROUPS 14
 #define MAX_OPERATORS_IN_GROUP 12
