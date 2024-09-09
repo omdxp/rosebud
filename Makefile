@@ -1,8 +1,11 @@
-OBJECTS= ./build/preprocessor.o ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
+OBJECTS= ./build/native.o ./build/preprocessor.o ./build/compiler.o ./build/codegen.o ./build/resolver.o ./build/rdefault.o ./build/stackframe.o ./build/array.o ./build/fixup.o ./build/helper.o ./build/scope.o ./build/symresolver.o ./build/cprocess.o ./build/datatype.o ./build/expressionable.o ./build/lexer.o ./build/token.o ./build/lex_process.o ./build/parser.o ./build/node.o ./build/helpers/buffer.o ./build/helpers/vector.o
 INCLUDES= -I./
 
 all: ${OBJECTS}
 	gcc main.c ${INCLUDES} ${OBJECTS} -g -o ./main
+
+./build/native.o: ./preprocessor/native.c
+	gcc ./preprocessor/native.c ${INCLUDES} -o ./build/native.o -g -c
 
 ./build/preprocessor.o: ./preprocessor/preprocessor.c
 	gcc ./preprocessor/preprocessor.c ${INCLUDES} -o ./build/preprocessor.o -g -c

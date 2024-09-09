@@ -1579,5 +1579,12 @@ void expressionable_parse(struct expressionable *expressionable);
 
 struct preprocessor *preprocessor_create(struct compile_process *compiler);
 int preprocessor_run(struct compile_process *compiler);
+struct token *preprocessor_prev_token(struct compile_process *compiler);
+struct vector *preprocessor_build_value_vector_for_integer(int value);
+struct preprocessor_definition *preprocessor_definition_create_native(
+    const char *name, PREPROCESSOR_DEFINITION_NATIVE_CALL_EVALUATE evaluate,
+    PREPROCESSOR_DEFINITION_NATIVE_CALL_VALUE value,
+    struct preprocessor *preprocessor);
+void preprocessor_create_defs(struct preprocessor *preprocessor);
 
 #endif

@@ -234,7 +234,7 @@ void preprocessor_init(struct preprocessor *preprocessor) {
   preprocessor->defs = vector_create(sizeof(struct preprocessor_definition *));
   preprocessor->includes =
       vector_create(sizeof(struct preprocessor_included_file *));
-#warning "create proprocessor default definitions"
+  preprocessor_create_defs(preprocessor);
 }
 
 struct preprocessor *preprocessor_create(struct compile_process *compiler) {
@@ -649,6 +649,21 @@ preprocessor_definition_create(const char *name, struct vector *value,
   return def;
 }
 
+struct preprocessor_definition *preprocessor_definition_create_native(
+    const char *name, PREPROCESSOR_DEFINITION_NATIVE_CALL_EVALUATE evaluate,
+    PREPROCESSOR_DEFINITION_NATIVE_CALL_VALUE value,
+    struct preprocessor *preprocessor) {
+  struct preprocessor_definition *def =
+      malloc(sizeof(struct preprocessor_definition));
+  def->type = PREPROCESSOR_DEFINITION_NATIVE_CALLBACK;
+  def->name = name;
+  def->native.evaluate = evaluate;
+  def->native.value = value;
+  def->preprocessor = preprocessor;
+  vector_push(preprocessor->defs, &def);
+  return def;
+}
+
 struct preprocessor_definition *
 preprocessor_definition_create_typedef(const char *name,
                                        struct vector *value_vec,
@@ -698,12 +713,17 @@ preprocessor_definition_value_for_typedef(struct preprocessor_definition *def) {
   return preprocessor_definition_value_for_typedef_or_other(def);
 }
 
+struct vector *preprocessor_definition_value_for_native(
+    struct preprocessor_definition *def,
+    struct preprocessor_function_args *args) {
+  return def->native.value(def, args);
+}
+
 struct vector *preprocessor_definition_value_with_arguments(
     struct preprocessor_definition *def,
     struct preprocessor_function_args *args) {
   if (def->type == PREPROCESSOR_DEFINITION_NATIVE_CALLBACK) {
-#warning "impl definition value for native"
-    return NULL;
+    return preprocessor_definition_value_for_native(def, args);
   } else if (def->type == PREPROCESSOR_DEFINITION_TYPEDEF) {
     return preprocessor_definition_value_for_typedef(def);
   }
@@ -739,14 +759,19 @@ int preprocessor_definition_evaluated_value_for_standard(
   return token->llnum;
 }
 
+int preprocess_evaluated_value_for_native(
+    struct preprocessor_definition *def,
+    struct preprocessor_function_args *args) {
+  return def->native.evaluate(def, args);
+}
+
 int preprocessor_definition_evaluated_value(
     struct preprocessor_definition *def,
     struct preprocessor_function_args *args) {
   if (def->type == PREPROCESSOR_DEFINITION_STANDARD) {
     return preprocessor_definition_evaluated_value_for_standard(def);
   } else if (def->type == PREPROCESSOR_DEFINITION_NATIVE_CALLBACK) {
-#warning "impl native callback"
-    return -1;
+    return preprocess_evaluated_value_for_native(def, args);
   }
 
   compiler_error(def->preprocessor->compiler, "Cannot evaluate to number");
