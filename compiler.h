@@ -1198,6 +1198,7 @@ void compiler_setup_default_include_dir(struct vector *include_dirs);
 struct compile_process *compile_include(const char *filename,
                                         struct compile_process *parent_process);
 
+void compiler_node_error(struct node *node, const char *msg, ...);
 void compiler_error(struct compile_process *compiler, const char *msg, ...);
 void compiler_warning(struct compile_process *compiler, const char *msg, ...);
 
